@@ -1,16 +1,16 @@
 from sqlalchemy import Column, String, Boolean, DateTime, Enum
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 from app.db.session import Base
+from app.db.types import UUID
 from app.core.enums import UserRole
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(), primary_key=True, default=uuid.uuid4)
     display_name = Column(String(255), nullable=False, index=True)
     qr_code = Column(String(255), nullable=True, index=True)
     role = Column(Enum(UserRole), nullable=False)
