@@ -17,15 +17,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create enums with checkfirst=True to avoid conflicts
-    userrole_enum = postgresql.ENUM('user', 'treasurer', name='userrole')
-    userrole_enum.create(op.get_bind(), checkfirst=True)
-    
-    moneymovetype_enum = postgresql.ENUM('deposit', 'payout', name='moneymovetype') 
-    moneymovetype_enum.create(op.get_bind(), checkfirst=True)
-    
-    moneymovestatus_enum = postgresql.ENUM('pending', 'confirmed', 'rejected', name='moneymovestatus')
-    moneymovestatus_enum.create(op.get_bind(), checkfirst=True)
+    # Create enums using raw SQL with IF NOT EXISTS
+    op.execute("CREATE TYPE userrole AS ENUM ('user', 'treasurer')")
+    op.execute("CREATE TYPE moneymovetype AS ENUM ('deposit', 'payout')")
+    op.execute("CREATE TYPE moneymovestatus AS ENUM ('pending', 'confirmed', 'rejected')")
     
     # Create users table
     op.create_table(
@@ -33,7 +28,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('display_name', sa.String(255), nullable=False),
         sa.Column('qr_code', sa.String(255), nullable=True),
-        sa.Column('role', userrole_enum, nullable=False),
+        sa.Column('role', postgresql.ENUM('user', 'treasurer', name='userrole', create_type=False), nullable=False),
         sa.Column('is_active', sa.Boolean, server_default=sa.text('true'), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
@@ -65,7 +60,7 @@ def upgrade() -> None:
     op.create_table(
         'money_moves',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
-        sa.Column('type', moneymovetype_enum, nullable=False),
+        sa.Column('type', postgresql.ENUM('deposit', 'payout', name='moneymovetype', create_type=False), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=False),
         sa.Column('amount_cents', sa.Integer, nullable=False),
         sa.Column('note', sa.String(500), nullable=True),
@@ -73,7 +68,7 @@ def upgrade() -> None:
         sa.Column('created_by', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=False),
         sa.Column('confirmed_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('confirmed_by', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=True),
-        sa.Column('status', moneymovestatus_enum, server_default=sa.text("'pending'"), nullable=False),
+        sa.Column('status', postgresql.ENUM('pending', 'confirmed', 'rejected', name='moneymovestatus', create_type=False), server_default=sa.text("'pending'"), nullable=False),
     )
     
     # Create audit table

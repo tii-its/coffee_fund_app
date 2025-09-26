@@ -21,4 +21,4 @@ class Audit(Base):
     actor = relationship("User", back_populates="audit_entries")
 
     def __repr__(self):
-        return f"<Audit(id={self.id}, actor_id={self.actor_id}, action='{self.action}', entity='{self.entity}')>"
+        return f"<Audit(id={self.id}, actor_id={self.actor_id}, action='{self.action}', entity='{self.entity}', entity_id={self.entity_id})>"

@@ -11,7 +11,7 @@ class MoneyMove(Base):
     __tablename__ = "money_moves"
 
     id = Column(UUID(), primary_key=True, default=uuid.uuid4)
-    type = Column(Enum(MoneyMoveType), nullable=False, index=True)
+    type = Column(Enum(MoneyMoveType, values_callable=lambda x: [e.value for e in x]), nullable=False, index=True)
     user_id = Column(UUID(), ForeignKey("users.id"), nullable=False, index=True)
     amount_cents = Column(Integer, nullable=False)
     note = Column(String(500), nullable=True)
@@ -19,7 +19,7 @@ class MoneyMove(Base):
     created_by = Column(UUID(), ForeignKey("users.id"), nullable=False)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
     confirmed_by = Column(UUID(), ForeignKey("users.id"), nullable=True)
-    status = Column(Enum(MoneyMoveStatus), default=MoneyMoveStatus.PENDING, nullable=False, index=True)
+    status = Column(Enum(MoneyMoveStatus, values_callable=lambda x: [e.value for e in x]), default=MoneyMoveStatus.PENDING, nullable=False, index=True)
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id], back_populates="money_moves")

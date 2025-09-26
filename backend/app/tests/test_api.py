@@ -1,57 +1,5 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app.db.session import get_db, Base
-import os
 from uuid import uuid4
-
-# Test database URL
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(scope="session")
-def client():
-    Base.metadata.create_all(bind=engine)
-    with TestClient(app) as c:
-        yield c
-    Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture
-def sample_user_data():
-    return {
-        "display_name": "Test User",
-        "role": "user",
-        "is_active": True
-    }
-
-
-@pytest.fixture
-def sample_product_data():
-    return {
-        "name": "Coffee",
-        "price_cents": 150,
-        "is_active": True
-    }
 
 
 def test_health_check(client):
