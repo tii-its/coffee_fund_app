@@ -3,6 +3,8 @@ Integration tests for complete business workflows
 """
 import pytest
 from app.services.balance import BalanceService
+from app.db.session import get_db
+from app.tests.conftest import override_get_db
 import uuid
 
 
