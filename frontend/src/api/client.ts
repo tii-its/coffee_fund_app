@@ -1,0 +1,179 @@
+import axios from 'axios'
+import type {
+  User,
+  UserBalance,
+  UserCreate,
+  UserUpdate,
+  Product,
+  ProductCreate,
+  ProductUpdate,
+  Consumption,
+  ConsumptionCreate,
+  MoneyMove,
+  MoneyMoveCreate,
+  AuditEntry,
+  Settings,
+  HealthCheck,
+} from './types'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Error interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message)
+    return Promise.reject(error)
+  }
+)
+
+// Users API
+export const usersApi = {
+  getAll: (params?: { skip?: number; limit?: number; active_only?: boolean }) =>
+    api.get<User[]>('/users/', { params }),
+  
+  getById: (id: string) =>
+    api.get<User>(`/users/${id}`),
+  
+  create: (user: UserCreate, creator_id?: string) =>
+    api.post<User>('/users/', user, { params: { creator_id } }),
+  
+  update: (id: string, user: UserUpdate, actor_id?: string) =>
+    api.put<User>(`/users/${id}`, user, { params: { actor_id } }),
+  
+  getBalance: (id: string) =>
+    api.get<UserBalance>(`/users/${id}/balance`),
+  
+  getQRCode: (id: string) =>
+    api.get<{ qr_code: string }>(`/users/${id}/qr-code`),
+  
+  getAllBalances: () =>
+    api.get<UserBalance[]>('/users/balances/all'),
+  
+  getBelowThreshold: (threshold_cents?: number) =>
+    api.get<UserBalance[]>('/users/balances/below-threshold', {
+      params: { threshold_cents },
+    }),
+}
+
+// Products API
+export const productsApi = {
+  getAll: (params?: { skip?: number; limit?: number; active_only?: boolean }) =>
+    api.get<Product[]>('/products/', { params }),
+  
+  getById: (id: string) =>
+    api.get<Product>(`/products/${id}`),
+  
+  create: (product: ProductCreate, creator_id?: string) =>
+    api.post<Product>('/products/', product, { params: { creator_id } }),
+  
+  update: (id: string, product: ProductUpdate, actor_id?: string) =>
+    api.put<Product>(`/products/${id}`, product, { params: { actor_id } }),
+  
+  delete: (id: string, actor_id?: string) =>
+    api.delete(`/products/${id}`, { params: { actor_id } }),
+}
+
+// Consumptions API
+export const consumptionsApi = {
+  getAll: (params?: {
+    skip?: number
+    limit?: number
+    user_id?: string
+    product_id?: string
+  }) => api.get<Consumption[]>('/consumptions/', { params }),
+  
+  getById: (id: string) =>
+    api.get<Consumption>(`/consumptions/${id}`),
+  
+  create: (consumption: ConsumptionCreate, creator_id: string) =>
+    api.post<Consumption>('/consumptions/', consumption, {
+      params: { creator_id },
+    }),
+  
+  getUserRecent: (user_id: string, limit?: number) =>
+    api.get<Consumption[]>(`/consumptions/user/${user_id}/recent`, {
+      params: { limit },
+    }),
+}
+
+// Money Moves API
+export const moneyMovesApi = {
+  getAll: (params?: {
+    skip?: number
+    limit?: number
+    user_id?: string
+    status?: 'pending' | 'confirmed' | 'rejected'
+  }) => api.get<MoneyMove[]>('/money-moves/', { params }),
+  
+  getById: (id: string) =>
+    api.get<MoneyMove>(`/money-moves/${id}`),
+  
+  create: (moneyMove: MoneyMoveCreate, creator_id: string) =>
+    api.post<MoneyMove>('/money-moves/', moneyMove, {
+      params: { creator_id },
+    }),
+  
+  getPending: (params?: { skip?: number; limit?: number }) =>
+    api.get<MoneyMove[]>('/money-moves/pending', { params }),
+  
+  confirm: (id: string, confirmer_id: string) =>
+    api.patch<MoneyMove>(`/money-moves/${id}/confirm`, null, {
+      params: { confirmer_id },
+    }),
+  
+  reject: (id: string, rejector_id: string) =>
+    api.patch<MoneyMove>(`/money-moves/${id}/reject`, null, {
+      params: { rejector_id },
+    }),
+}
+
+// Audit API
+export const auditApi = {
+  getAll: (params?: {
+    skip?: number
+    limit?: number
+    actor_id?: string
+    entity?: string
+    entity_id?: string
+  }) => api.get<AuditEntry[]>('/audit/', { params }),
+  
+  getById: (id: string) =>
+    api.get<AuditEntry>(`/audit/${id}`),
+}
+
+// Exports API
+export const exportsApi = {
+  consumptions: (limit?: number) =>
+    api.get('/exports/consumptions', {
+      params: { limit },
+      responseType: 'blob',
+    }),
+  
+  moneyMoves: (limit?: number) =>
+    api.get('/exports/money-moves', {
+      params: { limit },
+      responseType: 'blob',
+    }),
+  
+  balances: () =>
+    api.get('/exports/balances', {
+      responseType: 'blob',
+    }),
+}
+
+// Settings API
+export const settingsApi = {
+  get: () => api.get<Settings>('/settings/'),
+  
+  health: () => api.get<HealthCheck>('/settings/health'),
+}
+
+export default api
