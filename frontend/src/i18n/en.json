@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "Coffee Fund",
+    "subtitle": "Team Coffee Fund Management"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "kiosk": "Kiosk",
+    "treasurer": "Treasurer",
+    "users": "Users",
+    "products": "Products",
+    "consumptions": "Consumptions",
+    "moneyMoves": "Money Moves",
+    "audit": "Audit",
+    "settings": "Settings"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "reject": "Reject",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "name": "Name",
+    "price": "Price",
+    "quantity": "Quantity",
+    "total": "Total",
+    "date": "Date",
+    "user": "User",
+    "product": "Product",
+    "amount": "Amount",
+    "balance": "Balance",
+    "status": "Status",
+    "note": "Note",
+    "yes": "Yes",
+    "no": "No",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "user": {
+    "displayName": "Display Name",
+    "role": "Role",
+    "qrCode": "QR Code",
+    "balance": "Balance",
+    "userRole": "User",
+    "treasurerRole": "Treasurer",
+    "createUser": "Create User",
+    "editUser": "Edit User",
+    "userCreated": "User created successfully",
+    "userUpdated": "User updated successfully"
+  },
+  "product": {
+    "name": "Product Name",
+    "price": "Price (€)",
+    "createProduct": "Create Product",
+    "editProduct": "Edit Product",
+    "productCreated": "Product created successfully",
+    "productUpdated": "Product updated successfully",
+    "productDeleted": "Product deactivated successfully"
+  },
+  "consumption": {
+    "quantity": "Quantity",
+    "unitPrice": "Unit Price",
+    "totalAmount": "Total Amount",
+    "consumedBy": "Consumed by",
+    "createdBy": "Created by",
+    "consumptionCreated": "Consumption recorded successfully",
+    "recentConsumptions": "Recent Consumptions"
+  },
+  "moneyMove": {
+    "type": "Type",
+    "deposit": "Deposit",
+    "payout": "Payout",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "rejected": "Rejected",
+    "createDeposit": "Create Deposit",
+    "createPayout": "Create Payout",
+    "confirmMove": "Confirm Money Move",
+    "rejectMove": "Reject Money Move",
+    "pendingMoves": "Pending Money Moves",
+    "moveCreated": "Money move created successfully",
+    "moveConfirmed": "Money move confirmed successfully",
+    "moveRejected": "Money move rejected successfully",
+    "twoPersonConfirmation": "Money moves require two-person confirmation"
+  },
+  "kiosk": {
+    "selectUser": "Select User",
+    "selectProduct": "Select Product",
+    "confirmPurchase": "Confirm Purchase",
+    "purchaseComplete": "Purchase Complete!",
+    "userBalance": "Current Balance",
+    "belowThreshold": "Balance below threshold"
+  },
+  "dashboard": {
+    "currentBalance": "Current Balance",
+    "recentActivity": "Recent Activity",
+    "pendingConfirmations": "Pending Confirmations",
+    "balanceHistory": "Balance History"
+  },
+  "treasurer": {
+    "userBalances": "User Balances",
+    "pendingMoves": "Pending Money Moves",
+    "productManagement": "Product Management",
+    "exportData": "Export Data",
+    "exportConsumptions": "Export Consumptions",
+    "exportMoneyMoves": "Export Money Moves",
+    "exportBalances": "Export Balances",
+    "belowThreshold": "Users Below Threshold"
+  },
+  "errors": {
+    "fetchFailed": "Failed to fetch data",
+    "createFailed": "Failed to create",
+    "updateFailed": "Failed to update",
+    "deleteFailed": "Failed to delete",
+    "confirmFailed": "Failed to confirm",
+    "userNotFound": "User not found",
+    "productNotFound": "Product not found",
+    "insufficientBalance": "Insufficient balance",
+    "invalidData": "Invalid data provided"
+  }
+}

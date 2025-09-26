@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "Kaffeekasse",
+    "subtitle": "Team Kaffeekassen-Verwaltung"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "kiosk": "Kiosk",
+    "treasurer": "Verwalter",
+    "users": "Benutzer",
+    "products": "Produkte",
+    "consumptions": "Verbrauch",
+    "moneyMoves": "Geldtransfers",
+    "audit": "Protokoll",
+    "settings": "Einstellungen"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "confirm": "Bestätigen",
+    "reject": "Ablehnen",
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "success": "Erfolgreich",
+    "name": "Name",
+    "price": "Preis",
+    "quantity": "Menge",
+    "total": "Gesamt",
+    "date": "Datum",
+    "user": "Benutzer",
+    "product": "Produkt",
+    "amount": "Betrag",
+    "balance": "Saldo",
+    "status": "Status",
+    "note": "Notiz",
+    "yes": "Ja",
+    "no": "Nein",
+    "active": "Aktiv",
+    "inactive": "Inaktiv"
+  },
+  "user": {
+    "displayName": "Anzeigename",
+    "role": "Rolle",
+    "qrCode": "QR-Code",
+    "balance": "Saldo",
+    "userRole": "Benutzer",
+    "treasurerRole": "Verwalter",
+    "createUser": "Benutzer erstellen",
+    "editUser": "Benutzer bearbeiten",
+    "userCreated": "Benutzer erfolgreich erstellt",
+    "userUpdated": "Benutzer erfolgreich aktualisiert"
+  },
+  "product": {
+    "name": "Produktname",
+    "price": "Preis (€)",
+    "createProduct": "Produkt erstellen",
+    "editProduct": "Produkt bearbeiten",
+    "productCreated": "Produkt erfolgreich erstellt",
+    "productUpdated": "Produkt erfolgreich aktualisiert",
+    "productDeleted": "Produkt erfolgreich deaktiviert"
+  },
+  "consumption": {
+    "quantity": "Menge",
+    "unitPrice": "Stückpreis",
+    "totalAmount": "Gesamtbetrag",
+    "consumedBy": "Verbraucht von",
+    "createdBy": "Erstellt von",
+    "consumptionCreated": "Verbrauch erfolgreich erfasst",
+    "recentConsumptions": "Letzter Verbrauch"
+  },
+  "moneyMove": {
+    "type": "Art",
+    "deposit": "Einzahlung",
+    "payout": "Auszahlung",
+    "pending": "Ausstehend",
+    "confirmed": "Bestätigt",
+    "rejected": "Abgelehnt",
+    "createDeposit": "Einzahlung erstellen",
+    "createPayout": "Auszahlung erstellen",
+    "confirmMove": "Geldtransfer bestätigen",
+    "rejectMove": "Geldtransfer ablehnen",
+    "pendingMoves": "Ausstehende Geldtransfers",
+    "moveCreated": "Geldtransfer erfolgreich erstellt",
+    "moveConfirmed": "Geldtransfer erfolgreich bestätigt",
+    "moveRejected": "Geldtransfer erfolgreich abgelehnt",
+    "twoPersonConfirmation": "Geldtransfers erfordern eine Zwei-Personen-Bestätigung"
+  },
+  "kiosk": {
+    "selectUser": "Benutzer auswählen",
+    "selectProduct": "Produkt auswählen",
+    "confirmPurchase": "Kauf bestätigen",
+    "purchaseComplete": "Kauf abgeschlossen!",
+    "userBalance": "Aktueller Saldo",
+    "belowThreshold": "Saldo unter Schwellenwert"
+  },
+  "dashboard": {
+    "currentBalance": "Aktueller Saldo",
+    "recentActivity": "Letzte Aktivitäten",
+    "pendingConfirmations": "Ausstehende Bestätigungen",
+    "balanceHistory": "Saldo-Verlauf"
+  },
+  "treasurer": {
+    "userBalances": "Benutzer-Salden",
+    "pendingMoves": "Ausstehende Geldtransfers",
+    "productManagement": "Produktverwaltung",
+    "exportData": "Daten exportieren",
+    "exportConsumptions": "Verbrauch exportieren",
+    "exportMoneyMoves": "Geldtransfers exportieren",
+    "exportBalances": "Salden exportieren",
+    "belowThreshold": "Benutzer unter Schwellenwert"
+  },
+  "errors": {
+    "fetchFailed": "Daten konnten nicht geladen werden",
+    "createFailed": "Erstellen fehlgeschlagen",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "confirmFailed": "Bestätigung fehlgeschlagen",
+    "userNotFound": "Benutzer nicht gefunden",
+    "productNotFound": "Produkt nicht gefunden",
+    "insufficientBalance": "Unzureichender Saldo",
+    "invalidData": "Ungültige Daten bereitgestellt"
+  }
+}
