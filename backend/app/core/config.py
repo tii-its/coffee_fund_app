@@ -9,14 +9,18 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     threshold_cents: int = 1000
     csv_export_limit: int = 50000
-    cors_origins: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     @field_validator('cors_origins', mode='before')
     @classmethod
-    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(',')]
+    def parse_cors_origins(cls, v: Union[str, List[str]]) -> str:
+        if isinstance(v, list):
+            return ','.join(v)
         return v
+    
+    def get_cors_origins_list(self) -> List[str]:
+        """Get CORS origins as a list"""
+        return [origin.strip() for origin in self.cors_origins.split(',')]
     
     # Database settings
     echo_sql: bool = False

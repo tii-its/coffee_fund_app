@@ -17,15 +17,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create enums
+    # Create enums with checkfirst=True to avoid conflicts
     userrole_enum = postgresql.ENUM('user', 'treasurer', name='userrole')
-    userrole_enum.create(op.get_bind())
+    userrole_enum.create(op.get_bind(), checkfirst=True)
     
     moneymovetype_enum = postgresql.ENUM('deposit', 'payout', name='moneymovetype') 
-    moneymovetype_enum.create(op.get_bind())
+    moneymovetype_enum.create(op.get_bind(), checkfirst=True)
     
     moneymovestatus_enum = postgresql.ENUM('pending', 'confirmed', 'rejected', name='moneymovestatus')
-    moneymovestatus_enum.create(op.get_bind())
+    moneymovestatus_enum.create(op.get_bind(), checkfirst=True)
     
     # Create users table
     op.create_table(

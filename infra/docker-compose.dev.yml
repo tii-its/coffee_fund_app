@@ -30,7 +30,7 @@ services:
       - SECRET_KEY=dev-secret-key
       - THRESHOLD_CENTS=1000
       - CSV_EXPORT_LIMIT=50000
-      - CORS_ORIGINS=["http://localhost:3000", "http://localhost:5173"]
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
     depends_on:
       db:
         condition: service_healthy

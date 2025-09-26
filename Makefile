@@ -30,11 +30,15 @@ migrate-reset:
 
 # Testing
 test:
+	docker compose -f infra/docker-compose.dev.yml up -d --build
 	docker compose -f infra/docker-compose.dev.yml exec backend pytest
 	docker compose -f infra/docker-compose.dev.yml exec frontend npm test
+	docker compose -f infra/docker-compose.dev.yml down
 
 test-backend:
+	docker compose -f infra/docker-compose.dev.yml up -d --build
 	docker compose -f infra/docker-compose.dev.yml exec backend pytest
+	docker compose -f infra/docker-compose.dev.yml down
 
 test-frontend:
 	docker compose -f infra/docker-compose.dev.yml exec frontend npm test
