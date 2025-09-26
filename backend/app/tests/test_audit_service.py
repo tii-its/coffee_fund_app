@@ -2,32 +2,10 @@
 Test audit service functionality
 """
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.session import Base
 from app.models import User, Audit
 from app.services.audit import AuditService
 from app.core.enums import UserRole, AuditAction
 import uuid
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_audit_service.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture
-def db_session():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

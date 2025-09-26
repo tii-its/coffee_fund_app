@@ -1,31 +1,7 @@
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.session import Base
 from app.models import User, Product, Consumption, MoneyMove
 from app.services.balance import BalanceService
 from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_services.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture
-def db_session():
-    # Create a new database for each test
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        # Clean up all tables after each test
-        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

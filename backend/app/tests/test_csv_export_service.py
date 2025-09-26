@@ -4,32 +4,10 @@ Test CSV export service functionality
 import pytest
 import csv
 import io
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.session import Base
 from app.models import User, Product, Consumption, MoneyMove
 from app.services.csv_export import CSVExportService
 from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus
 from datetime import datetime
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_csv_export.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture
-def db_session():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

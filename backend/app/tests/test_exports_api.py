@@ -4,40 +4,7 @@ Test export API endpoints
 import pytest
 import csv
 import io
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app.db.session import get_db, Base
 from uuid import uuid4
-
-# Test database URL
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_exports.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture
-def client():
-    Base.metadata.create_all(bind=engine)
-    with TestClient(app) as c:
-        yield c
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
