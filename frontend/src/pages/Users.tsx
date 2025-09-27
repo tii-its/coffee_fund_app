@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { usersApi } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import UserCreateModal from '@/components/UserCreateModal'
 
 const Users: React.FC = () => {
   const { t } = useTranslation()
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -24,7 +26,10 @@ const Users: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">{t('navigation.users')}</h2>
-        <button className="btn btn-primary">
+        <button 
+          className="btn btn-primary"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
           {t('user.createUser')}
         </button>
       </div>
@@ -36,6 +41,9 @@ const Users: React.FC = () => {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">
                   {t('user.displayName')}
+                </th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                  {t('user.email')}
                 </th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">
                   {t('user.role')}
@@ -64,6 +72,9 @@ const Users: React.FC = () => {
                         )}
                       </div>
                     </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <p className="text-gray-900">{user.email}</p>
                   </td>
                   <td className="py-3 px-4">
                     <span className={`badge ${
@@ -98,6 +109,13 @@ const Users: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <UserCreateModal 
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        // Note: In a real app, you'd pass the current user's ID
+        // creatorId={currentUser?.id}
+      />
     </div>
   )
 }

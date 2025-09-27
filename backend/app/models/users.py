@@ -12,6 +12,7 @@ class User(Base):
 
     id = Column(UUID(), primary_key=True, default=uuid.uuid4)
     display_name = Column(String(255), nullable=False, index=True)
+    email = Column(String(320), nullable=False, unique=True, index=True)
     qr_code = Column(String(255), nullable=True, index=True)
     role = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

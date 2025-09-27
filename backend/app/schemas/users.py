@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -7,6 +7,7 @@ from app.core.enums import UserRole
 
 class UserBase(BaseModel):
     display_name: str
+    email: EmailStr
     qr_code: Optional[str] = None
     role: UserRole
     is_active: bool = True
@@ -18,6 +19,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     display_name: Optional[str] = None
+    email: Optional[EmailStr] = None
     qr_code: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None

@@ -43,6 +43,7 @@
   },
   "user": {
     "displayName": "Display Name",
+    "email": "Email",
     "role": "Role",
     "qrCode": "QR Code",
     "balance": "Balance",

@@ -43,6 +43,7 @@
   },
   "user": {
     "displayName": "Anzeigename",
+    "email": "E-Mail",
     "role": "Rolle",
     "qrCode": "QR-Code",
     "balance": "Saldo",

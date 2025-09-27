@@ -20,10 +20,15 @@ def create_user(
     creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user")
 ):
     """Create a new user"""
-    # Check if user with this display name already exists
-    existing_user = db.query(User).filter(User.display_name == user.display_name).first()
+    # Check if user with this display name or email already exists
+    existing_user = db.query(User).filter(
+        (User.display_name == user.display_name) | (User.email == user.email)
+    ).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="User with this display name already exists")
+        if existing_user.display_name == user.display_name:
+            raise HTTPException(status_code=400, detail="User with this display name already exists")
+        else:
+            raise HTTPException(status_code=400, detail="User with this email already exists")
     
     # Create new user
     db_user = User(**user.model_dump())
@@ -39,7 +44,7 @@ def create_user(
             action="create",
             entity="user",
             entity_id=db_user.id,
-            meta_data={"display_name": user.display_name, "role": user.role.value}
+            meta_data={"display_name": user.display_name, "email": user.email, "role": user.role.value}
         )
     
     return db_user
@@ -83,7 +88,7 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Update fields
-    update_data = user_update.dict(exclude_unset=True)
+    update_data = user_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
     
