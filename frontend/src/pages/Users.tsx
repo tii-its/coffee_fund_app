@@ -3,15 +3,17 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi } from '@/api/client'
 import { formatDate } from '@/lib/utils'
-import type { User, UserUpdate } from '@/api/types'
+import type { User, UserUpdate, UserCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
+import UserCreateModal from '@/components/UserCreateModal'
 import PinInputModal from '@/components/PinInputModal'
 
 const Users: React.FC = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   
+  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -19,6 +21,17 @@ const Users: React.FC = () => {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll().then((res: AxiosResponse<User[]>) => res.data),
+  })
+
+  const createUserMutation = useMutation({
+    mutationFn: (userCreate: UserCreate) => usersApi.create(userCreate),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setCreateModalOpen(false)
+    },
+    onError: (error: any) => {
+      console.error('Failed to create user:', error)
+    },
   })
 
   const updateUserMutation = useMutation({
@@ -47,6 +60,10 @@ const Users: React.FC = () => {
     },
   })
 
+  const handleCreate = () => {
+    setCreateModalOpen(true)
+  }
+
   const handleEdit = (user: User) => {
     setSelectedUser(user)
     setEditModalOpen(true)
@@ -55,6 +72,10 @@ const Users: React.FC = () => {
   const handleDelete = (user: User) => {
     setSelectedUser(user)
     setDeleteModalOpen(true)
+  }
+
+  const handleCreateSubmit = async (userCreate: UserCreate) => {
+    createUserMutation.mutate(userCreate)
   }
 
   const handleEditSubmit = async (userUpdate: UserUpdate, pin: string) => {
@@ -79,7 +100,10 @@ const Users: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">{t('navigation.users')}</h2>
-        <button className="btn btn-primary">
+        <button 
+          onClick={handleCreate}
+          className="btn btn-primary"
+        >
           {t('user.createUser')}
         </button>
       </div>
@@ -114,6 +138,7 @@ const Users: React.FC = () => {
                       <div className="text-2xl mr-3">👤</div>
                       <div>
                         <p className="font-medium text-gray-900">{user.display_name}</p>
+                        <p className="text-sm text-gray-500">{user.email}</p>
                         {user.qr_code && (
                           <p className="text-sm text-gray-500">QR: {user.qr_code}</p>
                         )}
@@ -162,6 +187,13 @@ const Users: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <UserCreateModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSubmit={handleCreateSubmit}
+        isLoading={createUserMutation.isPending}
+      />
 
       <UserEditModal
         isOpen={editModalOpen}
