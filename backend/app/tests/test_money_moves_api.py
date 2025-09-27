@@ -59,7 +59,7 @@ def test_create_money_move_deposit(client, test_user, test_treasurer, sample_mon
         f"/money-moves/?creator_id={test_treasurer['id']}", 
         json=sample_money_move_data
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     
     data = response.json()
     assert data["type"] == "deposit"
@@ -84,7 +84,7 @@ def test_create_money_move_payout(client, test_user, test_treasurer):
         f"/money-moves/?creator_id={test_treasurer['id']}", 
         json=money_move_data
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     
     data = response.json()
     assert data["type"] == "payout"

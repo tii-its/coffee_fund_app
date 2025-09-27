@@ -41,7 +41,7 @@ class BalanceService:
         for user in users:
             balance = BalanceService.get_user_balance(db, user.id)
             balances.append(UserBalance(
-                user=UserResponse.from_orm(user),
+                user=UserResponse.model_validate(user),
                 balance_cents=balance
             ))
 

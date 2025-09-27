@@ -11,7 +11,7 @@ from app.services.audit import AuditService
 router = APIRouter(prefix="/consumptions", tags=["consumptions"])
 
 
-@router.post("/", response_model=ConsumptionResponse)
+@router.post("/", response_model=ConsumptionResponse, status_code=201)
 def create_consumption(
     consumption: ConsumptionCreate,
     creator_id: UUID = Query(..., description="ID of the user creating this consumption"),
@@ -60,7 +60,7 @@ def create_consumption(
         amount_cents=amount_cents
     )
     
-    return db_consumption
+    return ConsumptionResponse.model_validate(db_consumption)
 
 
 @router.get("/", response_model=List[ConsumptionResponse])

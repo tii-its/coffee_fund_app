@@ -21,7 +21,7 @@ def test_get_settings(client):
 def test_create_user(client, sample_user_data):
     """Test user creation"""
     response = client.post("/users/", json=sample_user_data)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["display_name"] == sample_user_data["display_name"]
     assert data["role"] == sample_user_data["role"]
@@ -43,7 +43,7 @@ def test_get_users(client, sample_user_data):
 def test_create_product(client, sample_product_data):
     """Test product creation"""
     response = client.post("/products/", json=sample_product_data)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["name"] == sample_product_data["name"]
     assert data["price_cents"] == sample_product_data["price_cents"]

@@ -16,17 +16,17 @@ from app.core.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-
 # PIN verification schemas
 class PinVerificationRequest(BaseModel):
     pin: str
+
 
 class PinChangeRequest(BaseModel):
     current_pin: str
     new_pin: str
 
 
-@router.post("/", response_model=UserResponse)
+@router.post("/", response_model=UserResponse, status_code=201)
 def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
@@ -55,7 +55,7 @@ def create_user(
             meta_data={"display_name": user.display_name, "role": user.role.value}
         )
 
-    return db_user
+    return UserResponse.model_validate(db_user)
 
 
 @router.get("/", response_model=list[UserResponse])
@@ -203,7 +203,7 @@ def get_user_balance(user_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
 
     balance = BalanceService.get_user_balance(db, str(user_id))
-    return UserBalance(user=UserResponse.from_orm(user), balance_cents=balance)
+    return UserBalance(user=UserResponse.model_validate(user), balance_cents=balance)
 
 
 @router.get("/{user_id}/qr-code")

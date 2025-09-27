@@ -59,7 +59,7 @@ def test_create_consumption(client, test_user, test_product, test_treasurer, sam
         f"/consumptions/?creator_id={test_treasurer['id']}", 
         json=sample_consumption_data
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     
     data = response.json()
     assert data["user_id"] == sample_consumption_data["user_id"]
