@@ -25,6 +25,7 @@ This file gives **targeted, actionable guidance** to a GitHub Copilot agent work
 ## Critical Implementation Patterns
 
 ### Database & Migrations
+- **Email Validation**: Use email-validator dependency with Pydantic EmailStr for user email validation
 - **PostgreSQL Enums**: Use raw SQL in Alembic migrations for reliable enum creation:
   ```sql
   op.execute("CREATE TYPE IF NOT EXISTS userrole AS ENUM ('user', 'treasurer')")
@@ -115,6 +116,7 @@ Makefile
 ### users
 - id (uuid, pk)
 - display_name (str)
+- email (str, unique, required) # Added for reminders and updates
 - qr_code (str?, optional)
 - role (enum: user/treasurer)
 - is_active (bool)
@@ -166,6 +168,7 @@ Makefile
 - **Internationalization**: Use i18next in frontend, store strings in `/src/i18n/de.json` and `/src/i18n/en.json`. Default language: German. User can switch in UI.  
 - **Treasurer dashboard**: List of all balances, pending confirmations, product mgmt, CSV export.  
 - **User dashboard**: Current balance, consumption history, pending confirmations.  
+- **User Management**: Create User button opens modal with form validation for display name, email (required), role, and active status.  
 
 ---
 
