@@ -41,10 +41,17 @@
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "submit": "Senden",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "restore": "Wiederherstellen"
   },
   "user": {
     "displayName": "Anzeigename",
+    "displayNamePlaceholder": "Anzeigename eingeben",
+    "displayNameRequired": "Anzeigename ist erforderlich",
+    "email": "E-Mail",
+    "emailPlaceholder": "E-Mail-Adresse eingeben",
+    "emailRequired": "E-Mail-Adresse ist erforderlich",
+    "emailInvalid": "Ungültige E-Mail-Adresse",
     "role": "Rolle",
     "qrCode": "QR-Code",
     "balance": "Saldo",
@@ -130,7 +137,12 @@
     "change": "PIN ändern",
     "currentPin": "Aktuelle PIN",
     "newPin": "Neue PIN",
-    "changeSuccess": "PIN erfolgreich geändert"
+    "changeSuccess": "PIN erfolgreich geändert",
+    "treasurerPin": "Verwalter-PIN",
+    "treasurerPinHelp": "Eine PIN ist erforderlich, um Benutzer mit Verwalter-Rolle zu erstellen",
+    "requiredForTreasurer": "PIN ist für Verwalter-Rolle erforderlich",
+    "treasurerAccess": "Verwalter-Zugang",
+    "treasurerAccessDescription": "Bitte geben Sie die Verwalter-PIN ein, um auf die Produktverwaltung zuzugreifen."
   },
   "auth": {
     "restricted": "Eingeschränkter Bereich",

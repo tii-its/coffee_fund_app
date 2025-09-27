@@ -32,8 +32,9 @@ const PinInputModal: React.FC<PinInputModalProps> = ({
     try {
       setError('')
       await onSubmit(pin)
+      // Do not call onClose here — caller should control modal visibility on successful submit.
+      // This avoids triggering parent close handlers that perform navigation (e.g. redirect to home).
       setPin('')
-      onClose()
     } catch (err: any) {
       setError(err.response?.data?.detail || t('pin.invalid'))
     }

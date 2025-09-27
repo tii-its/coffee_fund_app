@@ -1,6 +1,7 @@
 export interface User {
   id: string
   display_name: string
+  email: string
   qr_code?: string | null
   role: 'user' | 'treasurer'
   is_active: boolean
@@ -14,13 +15,16 @@ export interface UserBalance {
 
 export interface UserCreate {
   display_name: string
+  email: string
   qr_code?: string | null
   role: 'user' | 'treasurer'
   is_active?: boolean
+  pin?: string  // Required for treasurer role
 }
 
 export interface UserUpdate {
   display_name?: string
+  email?: string
   qr_code?: string | null
   role?: 'user' | 'treasurer'
   is_active?: boolean
@@ -30,6 +34,7 @@ export interface Product {
   id: string
   name: string
   price_cents: number
+  icon?: string | null
   is_active: boolean
   created_at: string
 }
@@ -37,11 +42,13 @@ export interface Product {
 export interface ProductCreate {
   name: string
   price_cents: number
+  icon?: string | null
   is_active?: boolean
 }
 
 export interface ProductUpdate {
   name?: string
+  icon?: string | null
   price_cents?: number
   is_active?: boolean
 }

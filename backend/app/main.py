@@ -9,6 +9,26 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Run Alembic migrations at startup (Postgres only) to ensure new columns (e.g., users.email) exist
+@app.on_event("startup")
+def run_migrations() -> None:
+    try:
+        from app.db.session import engine
+        if engine.url.get_backend_name().startswith("postgres"):
+            from alembic import command
+            from alembic.config import Config
+            import pathlib
+            # main.py is at backend/app/main.py -> alembic.ini is at backend/alembic.ini (one parent)
+            alembic_ini = pathlib.Path(__file__).resolve().parent.parent / "alembic.ini"
+            if alembic_ini.exists():
+                cfg = Config(str(alembic_ini))
+                cfg.set_main_option("sqlalchemy.url", str(engine.url))
+                command.upgrade(cfg, "head")
+            else:
+                print(f"[startup] alembic.ini not found at {alembic_ini}")
+    except Exception as e:
+        print(f"[startup] Migration step skipped or failed: {e}")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,

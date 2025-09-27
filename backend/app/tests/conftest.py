@@ -154,6 +154,7 @@ def db_test_user(db_session):
     """Create a test user in database."""
     user = User(
         display_name="Test User",
+        email="test.user@example.com",
         role=UserRole.USER,
         is_active=True
     )
@@ -168,6 +169,7 @@ def db_test_treasurer(db_session):
     """Create a test treasurer in database."""
     treasurer = User(
         display_name="Test Treasurer",
+        email="test.treasurer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -182,6 +184,7 @@ def db_test_treasurer2(db_session):
     """Create a second test treasurer in database."""
     treasurer = User(
         display_name="Test Treasurer 2", 
+        email="test.treasurer2@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -290,6 +293,7 @@ def sample_user_data():
     """Sample user data for testing."""
     return {
         "display_name": "Test User",
+        "email": "test.user@example.com",
         "role": "user", 
         "is_active": True
     }
@@ -300,6 +304,7 @@ def sample_treasurer_data():
     """Sample treasurer data for testing."""
     return {
         "display_name": "Test Treasurer",
+        "email": "test.treasurer@example.com",
         "role": "treasurer",
         "is_active": True
     }
