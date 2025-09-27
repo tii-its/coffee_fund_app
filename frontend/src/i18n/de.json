@@ -139,6 +139,28 @@
     "treasurerAccess": "Verwalter-Zugang",
     "enterTreasurerPin": "Bitte geben Sie die Verwalter-PIN ein, um auf diesen Bereich zuzugreifen"
   },
+  "stock": {
+    "title": "Lagerverwaltung",
+    "purchases": "Einkäufe",
+    "addPurchase": "Einkauf hinzufügen",
+    "editPurchase": "Einkauf bearbeiten",
+    "itemName": "Artikelname",
+    "supplier": "Lieferant",
+    "unitPrice": "Einzelpreis",
+    "totalAmount": "Gesamtbetrag",
+    "purchaseDate": "Kaufdatum",
+    "receiptNumber": "Belegnummer",
+    "cashOutProcessed": "Auszahlung verarbeitet",
+    "pendingCashOut": "Ausstehende Auszahlung",
+    "processCashOut": "Auszahlung verarbeiten",
+    "confirmCashOut": "Auszahlung bestätigen",
+    "cashOutConfirmation": "Sind Sie sicher, dass Sie die Auszahlung für '{{item}}' verarbeiten möchten?",
+    "noPurchases": "Noch keine Einkäufe erfasst.",
+    "purchaseAdded": "Einkauf erfolgreich hinzugefügt",
+    "purchaseUpdated": "Einkauf erfolgreich aktualisiert",
+    "cashOutProcessed": "Auszahlung erfolgreich verarbeitet",
+    "purchaseDeleted": "Einkauf erfolgreich gelöscht"
+  },
   "errors": {
     "fetchFailed": "Daten konnten nicht geladen werden",
     "createFailed": "Erstellen fehlgeschlagen",

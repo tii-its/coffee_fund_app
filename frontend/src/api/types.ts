@@ -106,3 +106,49 @@ export interface HealthCheck {
   status: string
   message: string
 }
+
+export interface StockPurchase {
+  id: string
+  item_name: string
+  supplier?: string | null
+  quantity: number
+  unit_price_cents: number
+  total_amount_cents: number
+  purchase_date: string
+  receipt_number?: string | null
+  notes?: string | null
+  is_cash_out_processed: boolean
+  created_at: string
+  created_by: string
+}
+
+export interface StockPurchaseWithCreator extends StockPurchase {
+  creator: {
+    id: string
+    display_name: string
+    role: string
+  }
+}
+
+export interface StockPurchaseCreate {
+  item_name: string
+  supplier?: string | null
+  quantity: number
+  unit_price_cents: number
+  total_amount_cents: number
+  purchase_date: string
+  receipt_number?: string | null
+  notes?: string | null
+}
+
+export interface StockPurchaseUpdate {
+  item_name?: string
+  supplier?: string | null
+  quantity?: number
+  unit_price_cents?: number
+  total_amount_cents?: number
+  purchase_date?: string
+  receipt_number?: string | null
+  notes?: string | null
+  is_cash_out_processed?: boolean
+}
