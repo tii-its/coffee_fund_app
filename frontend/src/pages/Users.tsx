@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { usersApi } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import type { User } from '@/api/types'
+import type { AxiosResponse } from 'axios'
 
 const Users: React.FC = () => {
   const { t } = useTranslation()
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: () => usersApi.getAll().then((res) => res.data),
+    queryFn: () => usersApi.getAll().then((res: AxiosResponse<User[]>) => res.data),
   })
 
   if (isLoading) {
@@ -52,7 +54,7 @@ const Users: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {users.map((user: User) => (
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <div className="flex items-center">
