@@ -41,7 +41,8 @@
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "submit": "Senden",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "restore": "Wiederherstellen"
   },
   "user": {
     "displayName": "Anzeigename",
@@ -140,6 +141,8 @@
     "treasurerPin": "Verwalter-PIN",
     "treasurerPinHelp": "Eine PIN ist erforderlich, um Benutzer mit Verwalter-Rolle zu erstellen",
     "requiredForTreasurer": "PIN ist für Verwalter-Rolle erforderlich"
+    "treasurerAccess": "Verwalter-Zugang",
+    "treasurerAccessDescription": "Bitte geben Sie die Verwalter-PIN ein, um auf die Produktverwaltung zuzugreifen."
   },
   "errors": {
     "fetchFailed": "Daten konnten nicht geladen werden",

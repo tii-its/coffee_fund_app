@@ -72,6 +72,19 @@ const Products: React.FC = () => {
     }
   })
 
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => 
+      productsApi.update(id, { is_active: true }, currentUser?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      // TODO: Add success toast notification
+    },
+    onError: (error) => {
+      console.error('Failed to restore product:', error)
+      // TODO: Add error toast notification
+    }
+  })
+
   const handleCreateProduct = (product: ProductFormData) => {
     createMutation.mutate(product as ProductCreate)
   }
@@ -89,6 +102,10 @@ const Products: React.FC = () => {
     if (selectedProduct) {
       deleteMutation.mutate(selectedProduct.id)
     }
+  }
+
+  const handleRestoreProduct = (product: Product) => {
+    restoreMutation.mutate(product.id)
   }
 
   const openEditModal = (product: Product) => {
@@ -171,18 +188,28 @@ const Products: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex space-x-2">
-                      <button 
-                        onClick={() => openEditModal(product)}
-                        className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      >
-                        {t('common.edit')}
-                      </button>
-                      {product.is_active && (
+                      {product.is_active ? (
+                        <>
+                          <button 
+                            onClick={() => openEditModal(product)}
+                            className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                          >
+                            {t('common.edit')}
+                          </button>
+                          <button 
+                            onClick={() => openDeleteModal(product)}
+                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          >
+                            {t('common.delete')}
+                          </button>
+                        </>
+                      ) : (
                         <button 
-                          onClick={() => openDeleteModal(product)}
-                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          onClick={() => handleRestoreProduct(product)}
+                          className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          disabled={restoreMutation.isPending}
                         >
-                          {t('common.delete')}
+                          {restoreMutation.isPending ? t('common.loading') : t('common.restore')}
                         </button>
                       )}
                     </div>
@@ -229,7 +256,7 @@ const Products: React.FC = () => {
         }}
         onConfirm={handleDeleteProduct}
         title={t('common.delete')}
-        message={`Are you sure you want to deactivate "${selectedProduct?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to deactivate "${selectedProduct?.name}"? This will make the product inactive but it can be restored later.`}
       />
     </div>
   )

@@ -41,7 +41,8 @@
     "active": "Active",
     "inactive": "Inactive",
     "submit": "Submit",
-    "actions": "Actions"
+    "actions": "Actions",
+    "restore": "Restore"
   },
   "user": {
     "displayName": "Display Name",
@@ -140,6 +141,8 @@
     "treasurerPin": "Treasurer PIN",
     "treasurerPinHelp": "A PIN is required to create users with treasurer role",
     "requiredForTreasurer": "PIN is required for treasurer role"
+    "treasurerAccess": "Treasurer Access",
+    "treasurerAccessDescription": "Please enter the treasurer PIN to access product management."
   },
   "errors": {
     "fetchFailed": "Failed to fetch data",
