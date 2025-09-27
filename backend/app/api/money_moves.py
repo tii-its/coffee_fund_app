@@ -12,7 +12,7 @@ from app.core.enums import MoneyMoveStatus, UserRole
 router = APIRouter(prefix="/money-moves", tags=["money-moves"])
 
 
-@router.post("/", response_model=MoneyMoveResponse)
+@router.post("/", response_model=MoneyMoveResponse, status_code=201)
 def create_money_move(
     money_move: MoneyMoveCreate,
     creator_id: UUID = Query(..., description="ID of the user creating this money move"),
@@ -56,7 +56,7 @@ def create_money_move(
         note=money_move.note
     )
     
-    return db_money_move
+    return MoneyMoveResponse.model_validate(db_money_move)
 
 
 @router.get("/", response_model=List[MoneyMoveResponse])

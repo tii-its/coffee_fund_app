@@ -215,13 +215,21 @@ def test_user(client):
         "is_active": True
     }
     response = client.post("/users/", json=user_data)
-    if response.status_code != 200:
+    if response.status_code != 201:
         # If user exists, try with a timestamp to make it unique
         import time
         user_data["display_name"] = f"API Test User {int(time.time() * 1000)}"
         response = client.post("/users/", json=user_data)
-    assert response.status_code == 200
-    return response.json()
+    
+    if response.status_code != 201:
+        print(f"Failed to create user. Status: {response.status_code}, Response: {response.text}")
+        raise AssertionError(f"Expected 201, got {response.status_code}: {response.text}")
+    
+    response_data = response.json()
+    if 'id' not in response_data:
+        raise AssertionError(f"Response missing 'id' field: {response_data}")
+    
+    return response_data
 
 
 @pytest.fixture
@@ -233,13 +241,21 @@ def test_treasurer(client):
         "is_active": True
     }
     response = client.post("/users/", json=treasurer_data)
-    if response.status_code != 200:
+    if response.status_code != 201:
         # If user exists, try with a timestamp to make it unique
         import time
         treasurer_data["display_name"] = f"API Test Treasurer {int(time.time() * 1000)}"
         response = client.post("/users/", json=treasurer_data)
-    assert response.status_code == 200
-    return response.json()
+    
+    if response.status_code != 201:
+        print(f"Failed to create treasurer. Status: {response.status_code}, Response: {response.text}")
+        raise AssertionError(f"Expected 201, got {response.status_code}: {response.text}")
+    
+    response_data = response.json()
+    if 'id' not in response_data:
+        raise AssertionError(f"Response missing 'id' field: {response_data}")
+    
+    return response_data
 
 
 @pytest.fixture
@@ -251,13 +267,21 @@ def test_product(client):
         "is_active": True
     }
     response = client.post("/products/", json=product_data)
-    if response.status_code != 200:
+    if response.status_code != 201:
         # If product exists, try with a timestamp to make it unique
         import time
         product_data["name"] = f"API Test Coffee {int(time.time() * 1000)}"
         response = client.post("/products/", json=product_data)
-    assert response.status_code == 200
-    return response.json()
+    
+    if response.status_code != 201:
+        print(f"Failed to create product. Status: {response.status_code}, Response: {response.text}")
+        raise AssertionError(f"Expected 201, got {response.status_code}: {response.text}")
+    
+    response_data = response.json()
+    if 'id' not in response_data:
+        raise AssertionError(f"Response missing 'id' field: {response_data}")
+    
+    return response_data
 
 
 # Sample data fixtures

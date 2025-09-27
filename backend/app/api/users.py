@@ -13,7 +13,7 @@ from app.core.enums import UserRole
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserResponse)
+@router.post("/", response_model=UserResponse, status_code=201)
 def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
@@ -42,7 +42,7 @@ def create_user(
             meta_data={"display_name": user.display_name, "role": user.role.value}
         )
     
-    return db_user
+    return UserResponse.model_validate(db_user)
 
 
 @router.get("/", response_model=List[UserResponse])

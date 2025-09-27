@@ -10,7 +10,7 @@ from app.services.audit import AuditService
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-@router.post("/", response_model=ProductResponse)
+@router.post("/", response_model=ProductResponse, status_code=201)
 def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
@@ -39,7 +39,7 @@ def create_product(
             meta_data={"name": product.name, "price_cents": product.price_cents}
         )
     
-    return db_product
+    return ProductResponse.model_validate(db_product)
 
 
 @router.get("/", response_model=List[ProductResponse])

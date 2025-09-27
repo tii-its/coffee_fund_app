@@ -79,7 +79,7 @@ def test_complete_deposit_workflow(client, setup_users_and_product):
         f"/money-moves/?creator_id={treasurer1['id']}", 
         json=deposit_data
     )
-    assert create_response.status_code == 200
+    assert create_response.status_code == 201
     money_move = create_response.json()
     
     # Verify it's pending
@@ -224,7 +224,7 @@ def test_consumption_workflow(client, setup_users_and_product):
         f"/consumptions/?creator_id={treasurer1['id']}", 
         json=consumption_data
     )
-    assert consume_response.status_code == 200
+    assert consume_response.status_code == 201
     consumption = consume_response.json()
     
     # Verify consumption details
@@ -293,7 +293,7 @@ def test_multiple_consumptions_and_balance_tracking(client, setup_users_and_prod
             f"/consumptions/?creator_id={treasurer1['id']}", 
             json=consumption_data
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         
         consumption = response.json()
         assert consumption["amount_cents"] == session["expected_cost"]
