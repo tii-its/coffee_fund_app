@@ -97,14 +97,14 @@ def test_consumption_model_relationships(db_session, db_test_user, db_test_produ
     assert consumption.creator.display_name == "Test Treasurer"
     
     # Test reverse relationships
-    assert len(test_user.consumptions) == 1
-    assert test_user.consumptions[0].id == consumption.id
+    assert len(db_test_user.consumptions) == 1
+    assert db_test_user.consumptions[0].id == consumption.id
     
-    assert len(test_product.consumptions) == 1
-    assert test_product.consumptions[0].id == consumption.id
+    assert len(db_test_product.consumptions) == 1
+    assert db_test_product.consumptions[0].id == consumption.id
     
-    assert len(test_treasurer.created_consumptions) == 1
-    assert test_treasurer.created_consumptions[0].id == consumption.id
+    assert len(db_test_treasurer.created_consumptions) == 1
+    assert db_test_treasurer.created_consumptions[0].id == consumption.id
 
 
 def test_consumption_model_repr(db_session, db_test_user, db_test_product, db_test_treasurer):
@@ -151,7 +151,7 @@ def test_consumption_model_uuid_primary_key(db_session, db_test_user, db_test_pr
 
 
 # MoneyMove Model Tests
-def test_money_move_model_creation_deposit(db_session, db_test_user, test_treasurer):
+def test_money_move_model_creation_deposit(db_session, db_test_user, db_test_treasurer):
     """Test creating a deposit money move model"""
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
@@ -178,7 +178,7 @@ def test_money_move_model_creation_deposit(db_session, db_test_user, test_treasu
     assert money_move.confirmed_by is None
 
 
-def test_money_move_model_creation_payout(db_session, db_test_user, test_treasurer):
+def test_money_move_model_creation_payout(db_session, db_test_user, db_test_treasurer):
     """Test creating a payout money move model"""
     money_move = MoneyMove(
         type=MoneyMoveType.PAYOUT,
@@ -197,7 +197,7 @@ def test_money_move_model_creation_payout(db_session, db_test_user, test_treasur
     assert money_move.note is None  # Optional field
 
 
-def test_money_move_model_confirmation(db_session, db_test_user, test_treasurer):
+def test_money_move_model_confirmation(db_session, db_test_user, db_test_treasurer):
     """Test money move confirmation process"""
     # Create second treasurer for confirmation
     treasurer2 = User(
@@ -234,7 +234,7 @@ def test_money_move_model_confirmation(db_session, db_test_user, test_treasurer)
     assert money_move.confirmed_by == treasurer2.id
 
 
-def test_money_move_model_relationships(db_session, db_test_user, test_treasurer):
+def test_money_move_model_relationships(db_session, db_test_user, db_test_treasurer):
     """Test money move model relationships"""
     # Create confirmer
     confirmer = User(
@@ -266,17 +266,17 @@ def test_money_move_model_relationships(db_session, db_test_user, test_treasurer
     assert money_move.confirmer.display_name == "Confirmer"
     
     # Test reverse relationships
-    assert len(test_user.money_moves) == 1
-    assert test_user.money_moves[0].id == money_move.id
+    assert len(db_test_user.money_moves) == 1
+    assert db_test_user.money_moves[0].id == money_move.id
     
-    assert len(test_treasurer.created_money_moves) == 1
-    assert test_treasurer.created_money_moves[0].id == money_move.id
+    assert len(db_test_treasurer.created_money_moves) == 1
+    assert db_test_treasurer.created_money_moves[0].id == money_move.id
     
     assert len(confirmer.confirmed_money_moves) == 1
     assert confirmer.confirmed_money_moves[0].id == money_move.id
 
 
-def test_money_move_model_repr(db_session, db_test_user, test_treasurer):
+def test_money_move_model_repr(db_session, db_test_user, db_test_treasurer):
     """Test money move model string representation"""
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
@@ -298,7 +298,7 @@ def test_money_move_model_repr(db_session, db_test_user, test_treasurer):
     assert "1000" in repr_str
 
 
-def test_money_move_model_statuses(db_session, db_test_user, test_treasurer):
+def test_money_move_model_statuses(db_session, db_test_user, db_test_treasurer):
     """Test different money move statuses"""
     # Test all status types
     statuses = [MoneyMoveStatus.PENDING, MoneyMoveStatus.CONFIRMED, MoneyMoveStatus.REJECTED]
@@ -320,7 +320,7 @@ def test_money_move_model_statuses(db_session, db_test_user, test_treasurer):
 
 
 # Audit Model Tests
-def test_audit_model_creation(db_session, test_user):
+def test_audit_model_creation(db_session, db_test_user):
     """Test creating an audit model"""
     entity_id = uuid.uuid4()
     meta_data = {"test": "data", "number": 123}
@@ -346,7 +346,7 @@ def test_audit_model_creation(db_session, test_user):
     assert audit.at is not None
 
 
-def test_audit_model_relationships(db_session, test_user):
+def test_audit_model_relationships(db_session, db_test_user):
     """Test audit model relationships"""
     audit = Audit(
         actor_id=db_test_user.id,
@@ -364,11 +364,11 @@ def test_audit_model_relationships(db_session, test_user):
     assert audit.actor.display_name == "Test User"
     
     # Test reverse relationship
-    assert len(test_user.audit_entries) == 1
-    assert test_user.audit_entries[0].id == audit.id
+    assert len(db_test_user.audit_entries) == 1
+    assert db_test_user.audit_entries[0].id == audit.id
 
 
-def test_audit_model_repr(db_session, test_user):
+def test_audit_model_repr(db_session, db_test_user):
     """Test audit model string representation"""
     entity_id = uuid.uuid4()
     audit = Audit(
@@ -391,7 +391,7 @@ def test_audit_model_repr(db_session, test_user):
     assert str(entity_id) in repr_str
 
 
-def test_audit_model_json_metadata(db_session, test_user):
+def test_audit_model_json_metadata(db_session, db_test_user):
     """Test audit model JSON metadata handling"""
     complex_meta = {
         "string": "value",
@@ -424,7 +424,7 @@ def test_audit_model_json_metadata(db_session, test_user):
     assert audit.meta_json["nested"]["inner"] == "value"
 
 
-def test_audit_model_optional_metadata(db_session, test_user):
+def test_audit_model_optional_metadata(db_session, db_test_user):
     """Test audit model with no metadata"""
     audit = Audit(
         actor_id=db_test_user.id,
@@ -441,7 +441,7 @@ def test_audit_model_optional_metadata(db_session, test_user):
     assert audit.meta_json is None
 
 
-def test_audit_model_uuid_fields(db_session, test_user):
+def test_audit_model_uuid_fields(db_session, db_test_user):
     """Test that audit model has proper UUID fields"""
     entity_id = uuid.uuid4()
     audit = Audit(

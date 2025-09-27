@@ -202,7 +202,7 @@ def test_log_money_move_rejected(db_session, db_test_treasurer):
     assert meta["status"] == "rejected"
 
 
-def test_multiple_audit_entries(db_session, test_user, db_test_treasurer):
+def test_multiple_audit_entries(db_session, db_test_user, db_test_treasurer):
     """Test creating multiple audit entries"""
     # Create multiple entries
     entries = []
@@ -305,5 +305,5 @@ def test_audit_service_actor_relationship(db_session, db_test_user):
     assert audit_entry.actor.role == UserRole.USER
     
     # Test reverse relationship
-    assert len(test_user.audit_entries) == 1
-    assert test_user.audit_entries[0].id == audit_entry.id
+    assert len(db_test_user.audit_entries) == 1
+    assert db_test_user.audit_entries[0].id == audit_entry.id

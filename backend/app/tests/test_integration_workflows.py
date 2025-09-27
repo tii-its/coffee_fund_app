@@ -61,13 +61,11 @@ def test_complete_deposit_workflow(client, setup_users_and_product):
     treasurer1 = data["treasurer1"]
     treasurer2 = data["treasurer2"]
     
-    # Step 1: Check initial balance (should be 0)
-    db = next(override_get_db())
-    try:
-        initial_balance = BalanceService.get_user_balance(db, user["id"])
-        assert initial_balance == 0
-    finally:
-        db.close()
+    # Step 1: Check initial balance (should be 0) via API
+    balance_response = client.get(f"/users/{user['id']}/balance")
+    assert balance_response.status_code == 200
+    initial_balance = balance_response.json()["balance_cents"]
+    assert initial_balance == 0
     
     # Step 2: Treasurer 1 creates a deposit request
     deposit_data = {

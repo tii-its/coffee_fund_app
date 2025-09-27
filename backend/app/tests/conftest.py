@@ -15,6 +15,9 @@ import uuid
 
 from app.main import app
 from app.db.session import get_db, Base
+# Import all models to ensure they're registered with Base.metadata
+from app.models import User, Product, Consumption, MoneyMove, Audit
+from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus, AuditAction
 
 
 # Custom TypeDecorator for UUID compatibility with SQLite
@@ -143,6 +146,120 @@ def client(test_db):
     app.dependency_overrides = {}
 
 
+# Database model fixtures (return database objects)
+
+
+@pytest.fixture
+def db_test_user(db_session):
+    """Create a test user in database."""
+    user = User(
+        display_name="Test User",
+        role=UserRole.USER,
+        is_active=True
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture  
+def db_test_treasurer(db_session):
+    """Create a test treasurer in database."""
+    treasurer = User(
+        display_name="Test Treasurer",
+        role=UserRole.TREASURER,
+        is_active=True
+    )
+    db_session.add(treasurer)
+    db_session.commit()
+    db_session.refresh(treasurer)
+    return treasurer
+
+
+@pytest.fixture
+def db_test_treasurer2(db_session):
+    """Create a second test treasurer in database."""
+    treasurer = User(
+        display_name="Test Treasurer 2", 
+        role=UserRole.TREASURER,
+        is_active=True
+    )
+    db_session.add(treasurer)
+    db_session.commit()
+    db_session.refresh(treasurer)
+    return treasurer
+
+
+@pytest.fixture
+def db_test_product(db_session):
+    """Create a test product in database."""
+    product = Product(
+        name="Coffee",
+        price_cents=150,
+        is_active=True
+    )
+    db_session.add(product)
+    db_session.commit()
+    db_session.refresh(product)
+    return product
+
+
+# API fixtures (return API response dictionaries with 'id' fields)
+@pytest.fixture
+def test_user(client):
+    """Create a test user via API and return response."""
+    user_data = {
+        "display_name": "API Test User",
+        "role": "user",
+        "is_active": True
+    }
+    response = client.post("/users/", json=user_data)
+    if response.status_code != 200:
+        # If user exists, try with a timestamp to make it unique
+        import time
+        user_data["display_name"] = f"API Test User {int(time.time() * 1000)}"
+        response = client.post("/users/", json=user_data)
+    assert response.status_code == 200
+    return response.json()
+
+
+@pytest.fixture
+def test_treasurer(client):
+    """Create a test treasurer via API and return response."""
+    treasurer_data = {
+        "display_name": "API Test Treasurer",
+        "role": "treasurer",
+        "is_active": True
+    }
+    response = client.post("/users/", json=treasurer_data)
+    if response.status_code != 200:
+        # If user exists, try with a timestamp to make it unique
+        import time
+        treasurer_data["display_name"] = f"API Test Treasurer {int(time.time() * 1000)}"
+        response = client.post("/users/", json=treasurer_data)
+    assert response.status_code == 200
+    return response.json()
+
+
+@pytest.fixture
+def test_product(client):
+    """Create a test product via API and return response."""
+    product_data = {
+        "name": "API Test Coffee",
+        "price_cents": 150,
+        "is_active": True
+    }
+    response = client.post("/products/", json=product_data)
+    if response.status_code != 200:
+        # If product exists, try with a timestamp to make it unique
+        import time
+        product_data["name"] = f"API Test Coffee {int(time.time() * 1000)}"
+        response = client.post("/products/", json=product_data)
+    assert response.status_code == 200
+    return response.json()
+
+
 # Sample data fixtures
 @pytest.fixture
 def sample_user_data():
@@ -175,19 +292,22 @@ def sample_product_data():
 
 
 @pytest.fixture
-def sample_consumption_data():
+def sample_consumption_data(test_user, test_product):
     """Sample consumption data for testing."""
     return {
+        "user_id": test_user["id"],
+        "product_id": test_product["id"],
         "qty": 2,
         "unit_price_cents": 150
     }
 
 
 @pytest.fixture
-def sample_money_move_data():
+def sample_money_move_data(test_user):
     """Sample money move data for testing."""
     return {
         "type": "deposit",
+        "user_id": test_user["id"],
         "amount_cents": 1000,
         "note": "Test deposit"
     }

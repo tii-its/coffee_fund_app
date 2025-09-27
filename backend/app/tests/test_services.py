@@ -53,7 +53,7 @@ def test_balance_calculation_with_deposit(db_session, db_test_user):
     assert balance == 1000
 
 
-def test_balance_calculation_with_consumption(db_session, test_user, test_product):
+def test_balance_calculation_with_consumption(db_session, db_test_user, db_test_product):
     """Test balance calculation with consumption"""
     # Create a confirmed deposit first
     deposit = MoneyMove(
@@ -69,7 +69,7 @@ def test_balance_calculation_with_consumption(db_session, test_user, test_produc
     # Create a consumption
     consumption = Consumption(
         user_id=db_test_user.id,
-        product_id=test_product.id,
+        product_id=db_test_product.id,
         qty=2,
         unit_price_cents=150,
         amount_cents=300,
@@ -83,7 +83,7 @@ def test_balance_calculation_with_consumption(db_session, test_user, test_produc
     assert balance == 700
 
 
-def test_balance_calculation_pending_deposit_ignored(db_session, test_user, test_product):
+def test_balance_calculation_pending_deposit_ignored(db_session, db_test_user, db_test_product):
     """Test that pending deposits are ignored in balance calculation"""
     # Create a confirmed deposit first
     confirmed_deposit = MoneyMove(
@@ -98,7 +98,7 @@ def test_balance_calculation_pending_deposit_ignored(db_session, test_user, test
     # Create a consumption
     consumption = Consumption(
         user_id=db_test_user.id,
-        product_id=test_product.id,
+        product_id=db_test_product.id,
         qty=2,
         unit_price_cents=150,
         amount_cents=300,
