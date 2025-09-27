@@ -140,7 +140,7 @@
     "changeSuccess": "PIN erfolgreich geändert",
     "treasurerPin": "Verwalter-PIN",
     "treasurerPinHelp": "Eine PIN ist erforderlich, um Benutzer mit Verwalter-Rolle zu erstellen",
-    "requiredForTreasurer": "PIN ist für Verwalter-Rolle erforderlich"
+    "requiredForTreasurer": "PIN ist für Verwalter-Rolle erforderlich",
     "treasurerAccess": "Verwalter-Zugang",
     "treasurerAccessDescription": "Bitte geben Sie die Verwalter-PIN ein, um auf die Produktverwaltung zuzugreifen."
   },

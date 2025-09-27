@@ -140,7 +140,7 @@
     "changeSuccess": "PIN changed successfully",
     "treasurerPin": "Treasurer PIN",
     "treasurerPinHelp": "A PIN is required to create users with treasurer role",
-    "requiredForTreasurer": "PIN is required for treasurer role"
+    "requiredForTreasurer": "PIN is required for treasurer role",
     "treasurerAccess": "Treasurer Access",
     "treasurerAccessDescription": "Please enter the treasurer PIN to access product management."
   },

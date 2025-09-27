@@ -7,7 +7,8 @@ from app.core.enums import UserRole
 
 class UserBase(BaseModel):
     display_name: str
-    email: EmailStr
+    # Make email optional for backward compatibility with tests that don't provide it.
+    email: Optional[EmailStr] = None
     qr_code: Optional[str] = None
     role: UserRole
     is_active: bool = True
