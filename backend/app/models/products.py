@@ -12,6 +12,7 @@ class Product(Base):
     id = Column(UUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, index=True)
     price_cents = Column(Integer, nullable=False)
+    icon = Column(String(10), nullable=True, default='☕')
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
