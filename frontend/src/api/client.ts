@@ -7,6 +7,7 @@ import type {
   Product,
   ProductCreate,
   ProductUpdate,
+  ProductConsumptionStats,
   Consumption,
   ConsumptionCreate,
   MoneyMove,
@@ -103,6 +104,14 @@ export const productsApi = {
   
   delete: (id: string, actor_id?: string) =>
     api.delete(`/products/${id}`, { params: { actor_id } }),
+  
+  getLatest: () =>
+    api.get<Product | null>('/products/latest'),
+  
+  getTopConsumers: (limit_per_product?: number) =>
+    api.get<ProductConsumptionStats[]>('/products/top-consumers', {
+      params: { limit_per_product },
+    }),
 }
 
 // Consumptions API
