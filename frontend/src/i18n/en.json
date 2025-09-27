@@ -125,7 +125,8 @@
     "exportMoneyMoves": "Export Money Moves",
     "exportBalances": "Export Balances",
     "belowThreshold": "Users Below Threshold",
-    "aboveThreshold": "Users Above Threshold"
+    "aboveThreshold": "Users Above Threshold",
+    "settings": "Settings"
   },
   "pin": {
     "label": "PIN",
@@ -137,7 +138,14 @@
     "change": "Change PIN",
     "currentPin": "Current PIN",
     "newPin": "New PIN",
+    "confirmPin": "Confirm New PIN",
+    "newPinPlaceholder": "Enter new PIN",
+    "confirmPinPlaceholder": "Confirm new PIN",
+    "newPinRequired": "New PIN is required",
+    "pinMismatch": "PINs do not match",
+    "tooShort": "PIN must be at least 4 characters",
     "changeSuccess": "PIN changed successfully",
+    "changeError": "Failed to change PIN",
     "treasurerPin": "Treasurer PIN",
     "treasurerPinHelp": "A PIN is required to create users with treasurer role",
     "requiredForTreasurer": "PIN is required for treasurer role",

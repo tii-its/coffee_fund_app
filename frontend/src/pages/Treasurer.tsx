@@ -5,6 +5,7 @@ import { usersApi, moneyMovesApi, exportsApi, stockPurchasesApi } from '@/api/cl
 import { useAppStore } from '@/store'
 import { formatCurrency, formatDate, downloadBlob } from '@/lib/utils'
 import StockPurchaseForm from '@/components/StockPurchaseForm'
+import PinChangeModal from '@/components/PinChangeModal'
 import type { StockPurchaseCreate } from '@/api/types'
 
 const Treasurer: React.FC = () => {
@@ -13,6 +14,7 @@ const Treasurer: React.FC = () => {
   const { currentUser } = useAppStore()
   
   const [showStockForm, setShowStockForm] = useState(false)
+  const [showPinChangeModal, setShowPinChangeModal] = useState(false)
 
   // Fetch all user balances
   const { data: balances = [] } = useQuery({
@@ -159,6 +161,19 @@ const Treasurer: React.FC = () => {
           <h3 className="text-lg font-semibold mb-2">{t('stock.pendingCashOut')}</h3>
           <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPendingCashOut)}</p>
           <p className="text-sm text-gray-500">{pendingCashOut.length} {t('stock.purchases').toLowerCase()}</p>
+        </div>
+      </div>
+
+      {/* Settings Section */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4">{t('treasurer.settings')}</h3>
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => setShowPinChangeModal(true)}
+            className="btn btn-outline"
+          >
+            🔐 {t('pin.change')}
+          </button>
         </div>
       </div>
 
@@ -355,6 +370,18 @@ const Treasurer: React.FC = () => {
           onSubmit={handleStockPurchaseSubmit}
           onCancel={() => setShowStockForm(false)}
           isLoading={createStockPurchaseMutation.isPending}
+        />
+      )}
+      
+      {/* PIN Change Modal */}
+      {showPinChangeModal && (
+        <PinChangeModal
+          isOpen={showPinChangeModal}
+          onClose={() => setShowPinChangeModal(false)}
+          onSuccess={() => {
+            // Show success message or refresh data if needed
+            console.log('PIN changed successfully')
+          }}
         />
       )}
     </div>

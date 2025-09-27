@@ -53,7 +53,7 @@ def create_user(
     
     # If creating a treasurer and a PIN was provided, verify it. If no PIN provided, allow creation
     if user.role == UserRole.TREASURER and user.pin:
-        if not PinService.verify_pin(user.pin):
+        if not PinService.verify_pin(user.pin, db=db):
             raise HTTPException(status_code=403, detail="Invalid PIN for treasurer creation")
     
     # Create new user (exclude PIN from database)
@@ -119,7 +119,7 @@ def update_user(
 ):
     """Update a user (requires PIN verification)"""
     # Verify PIN for treasurer operations
-    if not PinService.verify_pin(pin):
+    if not PinService.verify_pin(pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -157,7 +157,7 @@ def delete_user(
 ):
     """Delete a user (requires PIN verification)"""
     # Verify PIN for treasurer operations
-    if not PinService.verify_pin(pin):
+    if not PinService.verify_pin(pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -184,9 +184,9 @@ def delete_user(
 
 
 @router.post("/verify-pin")
-def verify_pin(pin_request: PinVerificationRequest):
+def verify_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
     """Verify PIN for treasurer operations"""
-    if not PinService.verify_pin(pin_request.pin):
+    if not PinService.verify_pin(pin_request.pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     return {"message": "PIN verified successfully"}
@@ -199,15 +199,11 @@ def change_pin(
     actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
 ):
     """Change the treasurer PIN (requires current PIN)"""
-    # Verify current PIN
-    if not PinService.verify_pin(pin_change.current_pin):
+    # Use the enhanced PIN service to change the PIN
+    if not PinService.change_pin(db, pin_change.current_pin, pin_change.new_pin):
         raise HTTPException(status_code=403, detail="Invalid current PIN")
     
-    # For now, we'll just verify the change is valid
-    # In a full implementation, this would update a database record
-    # Since we're using config-based PIN, we'll just return success
-    # but log the action for audit purposes
-    
+    # Log the action for audit purposes
     if actor_id:
         AuditService.log_action(
             db=db,
@@ -218,7 +214,7 @@ def change_pin(
             meta_data={"operation": "pin_change"}
         )
     
-    return {"message": "PIN change requested successfully. Note: PIN is currently managed via configuration."}
+    return {"message": "PIN changed successfully"}
 
 
 @router.get("/{user_id}/balance", response_model=UserBalance)
