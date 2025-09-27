@@ -21,7 +21,7 @@ def upgrade() -> None:
     op.add_column('users', sa.Column('email', sa.String(255), nullable=True))
     
     # Update existing users with a default email pattern (required for migration)
-    op.execute("UPDATE users SET email = display_name || '@coffee-fund.local' WHERE email IS NULL")
+    op.execute("UPDATE users SET email = display_name || '@example.com' WHERE email IS NULL")
     
     # Make email non-nullable and add unique constraint
     op.alter_column('users', 'email', nullable=False)

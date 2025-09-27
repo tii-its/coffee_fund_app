@@ -44,7 +44,7 @@ def create_user(
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
     # If creating a treasurer, verify PIN
-    if user.role == UserRole.treasurer:
+    if user.role == UserRole.TREASURER:
         if not user.pin:
             raise HTTPException(status_code=400, detail="PIN is required to create treasurer role")
         if not PinService.verify_pin(user.pin):
