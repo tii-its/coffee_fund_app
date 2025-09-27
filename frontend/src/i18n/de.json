@@ -125,7 +125,8 @@
     "exportMoneyMoves": "Geldtransfers exportieren",
     "exportBalances": "Salden exportieren",
     "belowThreshold": "Benutzer unter Schwellenwert",
-    "aboveThreshold": "Benutzer über Schwellenwert"
+    "aboveThreshold": "Benutzer über Schwellenwert",
+    "settings": "Einstellungen"
   },
   "pin": {
     "label": "PIN",
@@ -137,7 +138,14 @@
     "change": "PIN ändern",
     "currentPin": "Aktuelle PIN",
     "newPin": "Neue PIN",
+    "confirmPin": "Neue PIN bestätigen",
+    "newPinPlaceholder": "Neue PIN eingeben",
+    "confirmPinPlaceholder": "Neue PIN bestätigen",
+    "newPinRequired": "Neue PIN ist erforderlich",
+    "pinMismatch": "PINs stimmen nicht überein",
+    "tooShort": "PIN muss mindestens 4 Zeichen haben",
     "changeSuccess": "PIN erfolgreich geändert",
+    "changeError": "Fehler beim Ändern der PIN",
     "treasurerPin": "Verwalter-PIN",
     "treasurerPinHelp": "Eine PIN ist erforderlich, um Benutzer mit Verwalter-Rolle zu erstellen",
     "requiredForTreasurer": "PIN ist für Verwalter-Rolle erforderlich",

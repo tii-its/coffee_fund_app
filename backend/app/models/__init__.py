@@ -5,5 +5,6 @@ from .consumptions import Consumption
 from .money_moves import MoneyMove
 from .audit import Audit
 from .stock_purchases import StockPurchase
+from .system_settings import SystemSettings
 
-__all__ = ["User", "Product", "Consumption", "MoneyMove", "Audit", "StockPurchase"]
+__all__ = ["User", "Product", "Consumption", "MoneyMove", "Audit", "StockPurchase", "SystemSettings"]
