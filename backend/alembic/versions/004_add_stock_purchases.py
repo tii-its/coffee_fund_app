@@ -1,17 +1,18 @@
 """Add stock_purchases table
 
-Revision ID: 002
-Revises: 001
-Create Date: 2024-09-27 18:00:00.000000
+Revision ID: 004
+Revises: 003
+Create Date: 2025-09-27 20:15:00.000000
 
+NOTE: Renamed from conflicting '002' to '004' after merge to resolve duplicate revision ID.
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers
-revision = '002'
-down_revision = '001'
+revision = '004'
+down_revision = '003'
 branch_labels = None
 depends_on = None
 
