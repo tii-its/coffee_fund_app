@@ -30,6 +30,7 @@ export interface Product {
   id: string
   name: string
   price_cents: number
+  icon?: string | null
   is_active: boolean
   created_at: string
 }
@@ -37,11 +38,13 @@ export interface Product {
 export interface ProductCreate {
   name: string
   price_cents: number
+  icon?: string | null
   is_active?: boolean
 }
 
 export interface ProductUpdate {
   name?: string
+  icon?: string | null
   price_cents?: number
   is_active?: boolean
 }

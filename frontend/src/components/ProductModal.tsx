@@ -8,6 +8,7 @@ import type { Product } from '@/api/types'
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   price_cents: z.number().min(1, 'Price must be greater than 0'),
+  icon: z.string().optional().nullable(),
   is_active: z.boolean().optional().default(true),
 })
 
@@ -42,6 +43,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     defaultValues: {
       name: '',
       price_cents: 100, // Default to 1 euro in cents
+      icon: '☕',
       is_active: true,
     },
   })
@@ -52,12 +54,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       reset({
         name: product.name,
         price_cents: product.price_cents,
+        icon: product.icon ?? '☕',
         is_active: product.is_active,
       })
     } else {
       reset({
         name: '',
         price_cents: 100,
+        icon: '☕',
         is_active: true,
       })
     }
@@ -104,6 +108,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             {errors.name && (
               <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('product.icon')}
+            </label>
+            <select
+              {...register('icon')}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="☕">☕ Coffee</option>
+              <option value="🍵">🍵 Tea</option>
+              <option value="🍫">🍫 Chocolate bar</option>
+              <option value="🍪">🍪 Cookie</option>
+            </select>
           </div>
 
           <div>
