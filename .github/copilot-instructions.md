@@ -1,4 +1,4 @@
-# copilot.md — Coffee Fund Web App (MVP)
+# copilot-instructions.md — Coffee Fund Web App (MVP)
 
 This file gives **targeted, actionable guidance** to a GitHub Copilot agent working on this repository. Keep suggestions **short, specific, and project-aware**.
 
@@ -15,10 +15,49 @@ This file gives **targeted, actionable guidance** to a GitHub Copilot agent work
 
 ## Tech Stack & Versions
 - **Backend:** Python 3.11, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic v2
-- **DB:** PostgreSQL 15
+- **DB:** PostgreSQL 15 (SQLite in-memory for testing)
 - **Frontend:** React 18 + Vite, TypeScript 5, i18next (for translations)
 - **Testing:** Pytest + httpx (backend), Vitest + Playwright (frontend/E2E)
 - **Packaging/Dev:** Docker Compose (dev/prod), Makefile, Ruff (lint), Black (format)
+
+---
+
+## Critical Implementation Patterns
+
+### Database & Migrations
+- **PostgreSQL Enums**: Use raw SQL in Alembic migrations for reliable enum creation:
+  ```sql
+  op.execute("CREATE TYPE IF NOT EXISTS userrole AS ENUM ('user', 'treasurer')")
+  ```
+- **SQLAlchemy Enum Fix**: Add `values_callable=lambda x: [e.value for e in x]` to prevent serialization issues:
+  ```python
+  Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]))
+  ```
+- **Cross-Database Testing**: Use custom TypeDecorators in `conftest.py` for SQLite compatibility:
+  ```python
+  # Handles UUID/JSON differences between PostgreSQL and SQLite
+  ```
+
+### Service Layer Architecture
+- **Balance Calculation**: Centralized in `BalanceService` with SQL aggregation:
+  ```python
+  # money_moves (confirmed) - consumptions = current balance
+  ```
+- **Audit Logging**: Every action logged via `AuditService` with structured metadata
+- **QR Code Generation**: Self-contained service for kiosk integration
+- **CSV Export**: Proper FastAPI Response headers for file downloads
+
+### API Patterns
+- **UUID Primary Keys**: All entities use UUID for distributed-friendly IDs
+- **Creator/Actor Tracking**: All mutations track who performed the action
+- **Two-Person Confirmation**: Money moves require separate creator and confirmer
+- **Pydantic v2**: Use `.model_dump()` instead of deprecated `.dict()`
+
+### Testing Infrastructure
+- **Centralized Fixtures**: Use `conftest.py` for shared database setup
+- **Cross-Database Compatibility**: SQLite for speed, PostgreSQL patterns for production
+- **Integration Tests**: Complete workflows in `test_integration_workflows.py`
+- **Isolated Tests**: Each test gets fresh database state
 
 ---
 
@@ -61,16 +100,17 @@ Makefile
   - `SECRET_KEY=change-me`
   - `THRESHOLD_CENTS=1000`  # default 10€
   - `CSV_EXPORT_LIMIT=50000`
-- **Dev up:** `docker compose -f infra/docker-compose.dev.yml up --build`
-- **Migrations:** `alembic revision --autogenerate -m "init"; alembic upgrade head`
-- **Backend dev:** `uvicorn app.main:app --reload`
-- **Frontend dev:** `npm i && npm run dev`
-- **Tests:** `make test`
+  - `CORS_ORIGINS=http://localhost:3000,http://localhost:5173`
+- **Dev up:** `make dev` (uses docker-compose.dev.yml)
+- **Test:** `make test` (backend + frontend), `make test-backend`, `make test-frontend`
+- **Migrations:** `make migrate` (upgrade), `make migrate-generate msg="description"`
+- **Linting:** `make lint` (check), `make lint-fix` (auto-fix)
+- **Logs/Shell:** `make logs-backend`, `make shell-backend`, `make shell-db`
 
 ---
 
 ## Data Model (Authoritative)
-> Implement with SQLAlchemy. Use snake_case in DB.
+> Implement with SQLAlchemy. Use snake_case in DB. All IDs are UUIDs.
 
 ### users
 - id (uuid, pk)
@@ -126,6 +166,34 @@ Makefile
 - **Internationalization**: Use i18next in frontend, store strings in `/src/i18n/de.json` and `/src/i18n/en.json`. Default language: German. User can switch in UI.  
 - **Treasurer dashboard**: List of all balances, pending confirmations, product mgmt, CSV export.  
 - **User dashboard**: Current balance, consumption history, pending confirmations.  
+
+---
+
+## Common Patterns & Debugging Tips
+
+### Database Issues
+- **Enum Conflicts**: If SQLAlchemy enum errors occur, ensure `values_callable=lambda x: [e.value for e in x]` in model definitions
+- **Migration Failures**: Use raw SQL for enum creation in Alembic: `op.execute("CREATE TYPE IF NOT EXISTS...")`
+- **Test Database**: Tests use SQLite with custom TypeDecorators for UUID/JSON compatibility
+
+### Service Layer
+- **Balance Logic**: BalanceService calculates: `confirmed_deposits - confirmed_payouts - all_consumptions`
+- **Audit Trail**: Every mutation logged via AuditService with actor_id and structured metadata
+- **Two-Person Rule**: Money moves need creator ≠ confirmer, enforced in API layer
+
+### API Development
+- **Response Objects**: Use FastAPI Response for file downloads with proper headers:
+  ```python
+  return Response(content=csv_data, media_type="text/csv", 
+                 headers={"Content-Disposition": "attachment; filename=export.csv"})
+  ```
+- **Pydantic v2**: Always use `.model_dump()` instead of deprecated `.dict()`
+- **UUID Handling**: All entity IDs are UUIDs, ensure proper serialization in schemas
+
+### Testing Patterns
+- **Centralized Setup**: Use fixtures from `conftest.py` for consistent database state
+- **Integration Tests**: Test complete workflows in `test_integration_workflows.py`
+- **Database Isolation**: Each test gets fresh database state via pytest fixtures
 
 ---
 
