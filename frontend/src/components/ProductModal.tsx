@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -39,18 +39,29 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     watch,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
-    defaultValues: product
-      ? {
-          name: product.name,
-          price_cents: product.price_cents,
-          is_active: product.is_active,
-        }
-      : {
-          name: '',
-          price_cents: 100, // Default to 1 euro in cents
-          is_active: true,
-        },
+    defaultValues: {
+      name: '',
+      price_cents: 100, // Default to 1 euro in cents
+      is_active: true,
+    },
   })
+
+  // Reset form when product prop changes
+  useEffect(() => {
+    if (product) {
+      reset({
+        name: product.name,
+        price_cents: product.price_cents,
+        is_active: product.is_active,
+      })
+    } else {
+      reset({
+        name: '',
+        price_cents: 100,
+        is_active: true,
+      })
+    }
+  }, [product, reset])
 
   // Convert cents to euros for display
   const priceInEuros = (watch('price_cents') || 0) / 100
