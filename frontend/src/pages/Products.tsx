@@ -11,6 +11,7 @@ import type { Product, ProductCreate, ProductUpdate } from '@/api/types'
 type ProductFormData = {
   name: string
   price_cents: number
+  icon?: string
   is_active: boolean
 }
 
@@ -165,7 +166,7 @@ const Products: React.FC = () => {
                 <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <div className="flex items-center">
-                      <div className="text-2xl mr-3">☕</div>
+                      <div className="text-2xl mr-3">{product.icon || '☕'}</div>
                       <p className="font-medium text-gray-900">{product.name}</p>
                     </div>
                   </td>
