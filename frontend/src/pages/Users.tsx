@@ -1,18 +1,71 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi } from '@/api/client'
 import { formatDate } from '@/lib/utils'
-import type { User } from '@/api/types'
+import type { User, UserUpdate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
+import UserEditModal from '@/components/UserEditModal'
+import PinInputModal from '@/components/PinInputModal'
 
 const Users: React.FC = () => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll().then((res: AxiosResponse<User[]>) => res.data),
   })
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ userId, userUpdate, pin }: { userId: string, userUpdate: UserUpdate, pin: string }) =>
+      usersApi.update(userId, userUpdate, pin),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setEditModalOpen(false)
+      setSelectedUser(null)
+    },
+    onError: (error: any) => {
+      console.error('Failed to update user:', error)
+    },
+  })
+
+  const deleteUserMutation = useMutation({
+    mutationFn: ({ userId, pin }: { userId: string, pin: string }) =>
+      usersApi.delete(userId, pin),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setDeleteModalOpen(false)
+      setSelectedUser(null)
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete user:', error)
+    },
+  })
+
+  const handleEdit = (user: User) => {
+    setSelectedUser(user)
+    setEditModalOpen(true)
+  }
+
+  const handleDelete = (user: User) => {
+    setSelectedUser(user)
+    setDeleteModalOpen(true)
+  }
+
+  const handleEditSubmit = async (userUpdate: UserUpdate, pin: string) => {
+    if (!selectedUser) return
+    updateUserMutation.mutate({ userId: selectedUser.id, userUpdate, pin })
+  }
+
+  const handleDeleteSubmit = async (pin: string) => {
+    if (!selectedUser) return
+    deleteUserMutation.mutate({ userId: selectedUser.id, pin })
+  }
 
   if (isLoading) {
     return (
@@ -86,11 +139,20 @@ const Users: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex space-x-2">
-                      <button className="btn btn-outline btn-sm">
+                      <button 
+                        onClick={() => handleEdit(user)}
+                        className="btn btn-outline btn-sm hover:bg-blue-50"
+                      >
                         {t('common.edit')}
                       </button>
                       <button className="btn btn-outline btn-sm">
                         QR
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(user)}
+                        className="btn btn-outline btn-sm text-red-600 hover:bg-red-50"
+                      >
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>
@@ -100,6 +162,29 @@ const Users: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <UserEditModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false)
+          setSelectedUser(null)
+        }}
+        user={selectedUser}
+        onSubmit={handleEditSubmit}
+        isLoading={updateUserMutation.isPending}
+      />
+
+      <PinInputModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setSelectedUser(null)
+        }}
+        onSubmit={handleDeleteSubmit}
+        title={t('user.deleteUser')}
+        description={selectedUser ? t('user.deleteConfirmation', { name: selectedUser.display_name }) : ''}
+        isLoading={deleteUserMutation.isPending}
+      />
     </div>
   )
 }

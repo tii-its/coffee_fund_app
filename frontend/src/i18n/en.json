@@ -39,7 +39,9 @@
     "yes": "Yes",
     "no": "No",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "submit": "Submit",
+    "actions": "Actions"
   },
   "user": {
     "displayName": "Display Name",
@@ -50,8 +52,12 @@
     "treasurerRole": "Treasurer",
     "createUser": "Create User",
     "editUser": "Edit User",
+    "deleteUser": "Delete User",
+    "deleteConfirmation": "Are you sure you want to delete the user '{{name}}'?",
+    "qrCodePlaceholder": "QR Code (optional)",
     "userCreated": "User created successfully",
-    "userUpdated": "User updated successfully"
+    "userUpdated": "User updated successfully",
+    "userDeleted": "User deleted successfully"
   },
   "product": {
     "name": "Product Name",
@@ -113,6 +119,18 @@
     "exportBalances": "Export Balances",
     "belowThreshold": "Users Below Threshold",
     "aboveThreshold": "Users Above Threshold"
+  },
+  "pin": {
+    "label": "PIN",
+    "placeholder": "Enter PIN",
+    "required": "PIN is required",
+    "invalid": "Invalid PIN",
+    "verification": "PIN Verification Required",
+    "description": "Please enter the treasurer PIN to continue.",
+    "change": "Change PIN",
+    "currentPin": "Current PIN",
+    "newPin": "New PIN",
+    "changeSuccess": "PIN changed successfully"
   },
   "errors": {
     "fetchFailed": "Failed to fetch data",
