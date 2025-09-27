@@ -115,6 +115,7 @@ Makefile
 ### users
 - id (uuid, pk)
 - display_name (str)
+- email (str, unique, required) - Used for notifications and updates
 - qr_code (str?, optional)
 - role (enum: user/treasurer)
 - is_active (bool)
@@ -180,6 +181,12 @@ Makefile
 - **Balance Logic**: BalanceService calculates: `confirmed_deposits - confirmed_payouts - all_consumptions`
 - **Audit Trail**: Every mutation logged via AuditService with actor_id and structured metadata
 - **Two-Person Rule**: Money moves need creator ≠ confirmer, enforced in API layer
+- **User Creation**: Creating users with treasurer role requires PIN verification. Email field is mandatory and validated.
+
+### Frontend Components
+- **UserCreateModal**: Form-based modal for creating new users with email validation and role-based PIN input
+- **UserEditModal**: Modal for editing existing users (includes email field)
+- **Treasurer PIN**: PIN input is required when creating users with treasurer role
 
 ### API Development
 - **Response Objects**: Use FastAPI Response for file downloads with proper headers:
@@ -203,6 +210,10 @@ Makefile
 3. User can book a coffee in ≤3 clicks.  
 4. Treasurer can view balances, pending confirmations, export CSV.  
 5. Deposits/payouts require confirmation by user before balance changes.  
-6. All actions are logged in `audit` table.  
+6. All actions are logged in `audit` table.
+7. **Create User button is functional** and opens a modal with proper form validation.
+8. **Email address is required** for all users and used for notifications/updates.
+9. **PIN verification required** when creating users with treasurer role.
+10. **Email validation** ensures valid email format before user creation.
 
 ---

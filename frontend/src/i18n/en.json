@@ -46,6 +46,12 @@
   },
   "user": {
     "displayName": "Display Name",
+    "displayNamePlaceholder": "Enter display name",
+    "displayNameRequired": "Display name is required",
+    "email": "Email",
+    "emailPlaceholder": "Enter email address",
+    "emailRequired": "Email address is required",
+    "emailInvalid": "Invalid email address",
     "role": "Role",
     "qrCode": "QR Code",
     "balance": "Balance",
@@ -132,6 +138,9 @@
     "currentPin": "Current PIN",
     "newPin": "New PIN",
     "changeSuccess": "PIN changed successfully",
+    "treasurerPin": "Treasurer PIN",
+    "treasurerPinHelp": "A PIN is required to create users with treasurer role",
+    "requiredForTreasurer": "PIN is required for treasurer role"
     "treasurerAccess": "Treasurer Access",
     "treasurerAccessDescription": "Please enter the treasurer PIN to access product management."
   },

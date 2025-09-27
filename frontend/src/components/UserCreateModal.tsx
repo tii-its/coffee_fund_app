@@ -1,49 +1,69 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { User, UserUpdate } from '@/api/types'
+import type { UserCreate } from '@/api/types'
 
-interface UserEditModalProps {
+interface UserCreateModalProps {
   isOpen: boolean
   onClose: () => void
-  user: User | null
-  onSubmit: (userUpdate: UserUpdate, pin: string) => void | Promise<void>
+  onSubmit: (userCreate: UserCreate) => void | Promise<void>
   isLoading?: boolean
 }
 
-const UserEditModal: React.FC<UserEditModalProps> = ({
+const UserCreateModal: React.FC<UserCreateModalProps> = ({
   isOpen,
   onClose,
-  user,
   onSubmit,
   isLoading = false,
 }) => {
   const { t } = useTranslation()
-  const [formData, setFormData] = useState<UserUpdate>({})
+  const [formData, setFormData] = useState<UserCreate>({
+    display_name: '',
+    email: '',
+    role: 'user',
+    is_active: true,
+  })
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        display_name: user.display_name,
-        email: user.email,
-        role: user.role,
-        is_active: user.is_active,
-        qr_code: user.qr_code || undefined,
-      })
-    }
-  }, [user])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pin.trim()) {
-      setError(t('pin.required'))
+    
+    if (!formData.display_name.trim()) {
+      setError(t('user.displayNameRequired'))
+      return
+    }
+    
+    if (!formData.email.trim()) {
+      setError(t('user.emailRequired'))
+      return
+    }
+    
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError(t('user.emailInvalid'))
+      return
+    }
+    
+    if (formData.role === 'treasurer' && !pin.trim()) {
+      setError(t('pin.requiredForTreasurer'))
       return
     }
     
     try {
       setError('')
-      await onSubmit(formData, pin)
+      const userData = { ...formData }
+      if (formData.role === 'treasurer') {
+        userData.pin = pin
+      }
+      await onSubmit(userData)
+      // Reset form
+      setFormData({
+        display_name: '',
+        email: '',
+        role: 'user',
+        is_active: true,
+      })
       setPin('')
       onClose()
     } catch (err: any) {
@@ -54,45 +74,52 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   const handleClose = () => {
     setPin('')
     setError('')
-    setFormData({})
+    setFormData({
+      display_name: '',
+      email: '',
+      role: 'user',
+      is_active: true,
+    })
     onClose()
   }
 
-  const handleInputChange = (field: keyof UserUpdate, value: any) => {
+  const handleInputChange = (field: keyof UserCreate, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  if (!isOpen || !user) return null
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
-        <h3 className="text-lg font-semibold mb-4">{t('user.editUser')}</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('user.createUser')}</h3>
         
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 mb-6">
             <div>
               <label htmlFor="display_name" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('user.displayName')}
+                {t('user.displayName')} *
               </label>
               <input
                 type="text"
                 id="display_name"
-                value={formData.display_name || ''}
+                value={formData.display_name}
                 onChange={(e) => handleInputChange('display_name', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t('user.displayNamePlaceholder')}
                 disabled={isLoading}
+                autoFocus
               />
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('user.email')}
+                {t('user.email')} *
               </label>
               <input
                 type="email"
                 id="email"
-                value={formData.email || ''}
+                value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={t('user.emailPlaceholder')}
@@ -106,7 +133,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
               </label>
               <select
                 id="role"
-                value={formData.role || 'user'}
+                value={formData.role}
                 onChange={(e) => handleInputChange('role', e.target.value as 'user' | 'treasurer')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isLoading}
@@ -144,25 +171,29 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
                 {t('common.active')}
               </label>
             </div>
-          </div>
 
-          <div className="mb-4">
-            <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('pin.label')} *
-            </label>
-            <input
-              type="password"
-              id="pin"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={t('pin.placeholder')}
-              disabled={isLoading}
-            />
-            {error && (
-              <p className="text-red-500 text-sm mt-1">{error}</p>
+            {formData.role === 'treasurer' && (
+              <div>
+                <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('pin.treasurerPin')} *
+                </label>
+                <input
+                  type="password"
+                  id="pin"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={t('pin.placeholder')}
+                  disabled={isLoading}
+                />
+                <p className="text-sm text-gray-500 mt-1">{t('pin.treasurerPinHelp')}</p>
+              </div>
             )}
           </div>
+
+          {error && (
+            <p className="text-red-500 text-sm mb-4">{error}</p>
+          )}
           
           <div className="flex justify-end space-x-3">
             <button
@@ -175,10 +206,10 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !pin.trim()}
+              disabled={isLoading || !formData.display_name.trim() || !formData.email.trim() || (formData.role === 'treasurer' && !pin.trim())}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? t('common.loading') : t('common.save')}
+              {isLoading ? t('common.loading') : t('user.createUser')}
             </button>
           </div>
         </form>
@@ -187,4 +218,4 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   )
 }
 
-export default UserEditModal
+export default UserCreateModal

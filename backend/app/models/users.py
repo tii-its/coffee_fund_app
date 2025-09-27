@@ -12,6 +12,7 @@ class User(Base):
 
     id = Column(UUID(), primary_key=True, default=uuid.uuid4)
     display_name = Column(String(255), nullable=False, index=True)
+    email = Column(String(255), nullable=False, index=True, unique=True)
     qr_code = Column(String(255), nullable=True, index=True)
     role = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -26,4 +27,4 @@ class User(Base):
     audit_entries = relationship("Audit", back_populates="actor")
 
     def __repr__(self):
-        return f"<User(id={self.id}, display_name='{self.display_name}', role='{self.role}')>"
+        return f"<User(id={self.id}, display_name='{self.display_name}', email='{self.email}', role='{self.role}')>"
