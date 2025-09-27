@@ -1,8 +1,9 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models import User
@@ -10,8 +11,19 @@ from app.schemas import UserBalance, UserCreate, UserResponse, UserUpdate
 from app.services.audit import AuditService
 from app.services.balance import BalanceService
 from app.services.qr_code import QRCodeService
+from app.services.pin import PinService
+from app.core.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+# PIN verification schemas
+class PinVerificationRequest(BaseModel):
+    pin: str
+
+class PinChangeRequest(BaseModel):
+    current_pin: str
+    new_pin: str
 
 
 @router.post("/", response_model=UserResponse)
@@ -76,15 +88,20 @@ def update_user(
     user_id: UUID,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update")
+    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update"),
+    pin: str = Body(..., description="PIN for treasurer verification", embed=True)
 ):
-    """Update a user"""
+    """Update a user (requires PIN verification)"""
+    # Verify PIN for treasurer operations
+    if not PinService.verify_pin(pin):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Update fields
-    update_data = user_update.dict(exclude_unset=True)
+    update_data = user_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
 
@@ -103,6 +120,79 @@ def update_user(
         )
 
     return user
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the deletion"),
+    pin: str = Body(..., description="PIN for treasurer verification", embed=True)
+):
+    """Delete a user (requires PIN verification)"""
+    # Verify PIN for treasurer operations
+    if not PinService.verify_pin(pin):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Soft delete by setting is_active to False
+    user.is_active = False
+    db.commit()
+    db.refresh(user)
+
+    # Log action
+    if actor_id:
+        AuditService.log_action(
+            db=db,
+            actor_id=actor_id,
+            action="delete",
+            entity="user",
+            entity_id=user.id,
+            meta_data={"display_name": user.display_name, "soft_delete": True}
+        )
+
+    return {"message": "User deleted successfully"}
+
+
+@router.post("/verify-pin")
+def verify_pin(pin_request: PinVerificationRequest):
+    """Verify PIN for treasurer operations"""
+    if not PinService.verify_pin(pin_request.pin):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    
+    return {"message": "PIN verified successfully"}
+
+
+@router.post("/change-pin")
+def change_pin(
+    pin_change: PinChangeRequest,
+    db: Session = Depends(get_db),
+    actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
+):
+    """Change the treasurer PIN (requires current PIN)"""
+    # Verify current PIN
+    if not PinService.verify_pin(pin_change.current_pin):
+        raise HTTPException(status_code=403, detail="Invalid current PIN")
+    
+    # For now, we'll just verify the change is valid
+    # In a full implementation, this would update a database record
+    # Since we're using config-based PIN, we'll just return success
+    # but log the action for audit purposes
+    
+    if actor_id:
+        AuditService.log_action(
+            db=db,
+            actor_id=actor_id,
+            action="change_pin",
+            entity="system",
+            entity_id=str(actor_id),
+            meta_data={"operation": "pin_change"}
+        )
+    
+    return {"message": "PIN change requested successfully. Note: PIN is currently managed via configuration."}
 
 
 @router.get("/{user_id}/balance", response_model=UserBalance)

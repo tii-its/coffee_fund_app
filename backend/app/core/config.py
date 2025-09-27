@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     threshold_cents: int = 1000
     csv_export_limit: int = 50000
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    treasurer_pin: str = "1234"  # Default PIN for treasurer operations
 
     @field_validator('cors_origins', mode='before')
     @classmethod
