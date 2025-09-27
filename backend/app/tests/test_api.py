@@ -60,3 +60,23 @@ def test_get_products(client, sample_product_data):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) > 0
+
+
+def test_get_users_above_threshold(client):
+    """Test getting users with balance above threshold via API"""
+    # Test the new above-threshold endpoint
+    response = client.get("/users/balances/above-threshold?threshold_cents=1000")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    # Should be empty initially since no users have balances set up
+    assert len(data) == 0
+
+
+def test_get_users_below_threshold(client):
+    """Test getting users with balance below threshold via API"""
+    # Test the existing below-threshold endpoint
+    response = client.get("/users/balances/below-threshold?threshold_cents=1000")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)

@@ -1,9 +1,10 @@
+
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
-from app.models import User, Consumption, MoneyMove
+
 from app.core.enums import MoneyMoveStatus, MoneyMoveType
+from app.models import Consumption, MoneyMove, User
 from app.schemas.users import UserBalance, UserResponse
-from typing import List
 
 
 class BalanceService:
@@ -32,22 +33,28 @@ class BalanceService:
         return money_move_total - consumption_total
 
     @staticmethod
-    def get_all_user_balances(db: Session) -> List[UserBalance]:
+    def get_all_user_balances(db: Session) -> list[UserBalance]:
         """Get balance for all active users"""
         users = db.query(User).filter(User.is_active == True).all()
         balances = []
-        
+
         for user in users:
             balance = BalanceService.get_user_balance(db, user.id)
             balances.append(UserBalance(
                 user=UserResponse.from_orm(user),
                 balance_cents=balance
             ))
-        
+
         return balances
 
     @staticmethod
-    def get_users_below_threshold(db: Session, threshold_cents: int) -> List[UserBalance]:
+    def get_users_below_threshold(db: Session, threshold_cents: int) -> list[UserBalance]:
         """Get users with balance below threshold"""
         all_balances = BalanceService.get_all_user_balances(db)
         return [balance for balance in all_balances if balance.balance_cents < threshold_cents]
+
+    @staticmethod
+    def get_users_above_threshold(db: Session, threshold_cents: int) -> list[UserBalance]:
+        """Get users with balance above or equal to threshold"""
+        all_balances = BalanceService.get_all_user_balances(db)
+        return [balance for balance in all_balances if balance.balance_cents >= threshold_cents]

@@ -44,7 +44,13 @@ const Dashboard: React.FC = () => {
     enabled: !!selectedUser,
   })
 
-  // Fetch all user balances
+  // Fetch users above threshold (>=€10.00) 
+  const { data: usersAboveThreshold = [] } = useQuery({
+    queryKey: ['usersAboveThreshold'],
+    queryFn: () => usersApi.getAboveThreshold(1000).then((res) => res.data),
+  })
+
+  // Fetch all user balances for total balance calculation
   const { data: allBalances = [] } = useQuery({
     queryKey: ['allBalances'],
     queryFn: () => usersApi.getAllBalances().then((res) => res.data),
@@ -79,11 +85,23 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="card">
-            <h3 className="text-lg font-semibold mb-2">{t('treasurer.belowThreshold')}</h3>
-            <p className="text-3xl font-bold text-red-600">
-              {allBalances.filter(balance => balance.balance_cents < 1000).length}
+            <h3 className="text-lg font-semibold mb-2">{t('treasurer.aboveThreshold')}</h3>
+            <p className="text-3xl font-bold text-green-600">
+              {usersAboveThreshold.length}
             </p>
-            <p className="text-gray-600 text-sm">&lt; €10.00</p>
+            <p className="text-gray-600 text-sm">≥ €10.00</p>
+            {usersAboveThreshold.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {usersAboveThreshold.map((userBalance) => (
+                  <div key={userBalance.user.id} className="text-sm text-gray-700 flex justify-between">
+                    <span>{userBalance.user.display_name}</span>
+                    <span className="text-green-600 font-medium">
+                      {formatCurrency(userBalance.balance_cents)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
