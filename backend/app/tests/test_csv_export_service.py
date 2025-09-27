@@ -4,36 +4,14 @@ Test CSV export service functionality
 import pytest
 import csv
 import io
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.session import Base
 from app.models import User, Product, Consumption, MoneyMove
 from app.services.csv_export import CSVExportService
 from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus
 from datetime import datetime
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_csv_export.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 @pytest.fixture
-def db_session():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture
-def test_user(db_session):
+def db_test_user(db_session):
     user = User(
         display_name="Test User",
         role=UserRole.USER,
@@ -46,7 +24,7 @@ def test_user(db_session):
 
 
 @pytest.fixture
-def test_treasurer(db_session):
+def db_test_treasurer(db_session):
     treasurer = User(
         display_name="Test Treasurer",
         role=UserRole.TREASURER,
@@ -59,7 +37,7 @@ def test_treasurer(db_session):
 
 
 @pytest.fixture
-def test_product(db_session):
+def db_test_product(db_session):
     product = Product(
         name="Coffee",
         price_cents=150,
@@ -88,16 +66,16 @@ def test_export_consumptions_empty(db_session):
     assert rows[0] == expected_headers
 
 
-def test_export_consumptions_with_data(db_session, test_user, test_product, test_treasurer):
+def test_export_consumptions_with_data(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test exporting consumptions with data"""
     # Create consumption
     consumption = Consumption(
-        user_id=test_user.id,
-        product_id=test_product.id,
+        user_id=db_test_user.id,
+        product_id=db_test_product.id,
         qty=2,
         unit_price_cents=150,
         amount_cents=300,
-        created_by=test_treasurer.id
+        created_by=db_test_treasurer.id
     )
     db_session.add(consumption)
     db_session.commit()
@@ -132,7 +110,7 @@ def test_export_consumptions_with_data(db_session, test_user, test_product, test
     assert len(data_row[0]) > 0
 
 
-def test_export_consumptions_multiple(db_session, test_user, test_product, test_treasurer):
+def test_export_consumptions_multiple(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test exporting multiple consumptions"""
     # Create multiple consumptions
     consumptions_data = [
@@ -143,12 +121,12 @@ def test_export_consumptions_multiple(db_session, test_user, test_product, test_
     
     for data in consumptions_data:
         consumption = Consumption(
-            user_id=test_user.id,
-            product_id=test_product.id,
+            user_id=db_test_user.id,
+            product_id=db_test_product.id,
             qty=data["qty"],
             unit_price_cents=data["unit_price_cents"],
             amount_cents=data["amount_cents"],
-            created_by=test_treasurer.id
+            created_by=db_test_treasurer.id
         )
         db_session.add(consumption)
     
@@ -168,17 +146,17 @@ def test_export_consumptions_multiple(db_session, test_user, test_product, test_
     assert "1" in quantities
 
 
-def test_export_consumptions_with_limit(db_session, test_user, test_product, test_treasurer):
+def test_export_consumptions_with_limit(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test exporting consumptions with limit"""
     # Create 5 consumptions
     for i in range(5):
         consumption = Consumption(
-            user_id=test_user.id,
-            product_id=test_product.id,
+            user_id=db_test_user.id,
+            product_id=db_test_product.id,
             qty=i + 1,
             unit_price_cents=150,
             amount_cents=(i + 1) * 150,
-            created_by=test_treasurer.id
+            created_by=db_test_treasurer.id
         )
         db_session.add(consumption)
     
@@ -210,14 +188,14 @@ def test_export_money_moves_empty(db_session):
     assert rows[0] == expected_headers
 
 
-def test_export_money_moves_pending(db_session, test_user, test_treasurer):
+def test_export_money_moves_pending(db_session, db_test_user, db_test_treasurer):
     """Test exporting pending money move"""
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=1000,
         note="Test deposit",
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.PENDING
     )
     db_session.add(money_move)
@@ -245,7 +223,7 @@ def test_export_money_moves_pending(db_session, test_user, test_treasurer):
     assert data_row[8] == ""                  # Confirmed By (empty for pending)
 
 
-def test_export_money_moves_confirmed(db_session, test_user, test_treasurer):
+def test_export_money_moves_confirmed(db_session, db_test_user, db_test_treasurer):
     """Test exporting confirmed money move"""
     # Create confirmer
     confirmer = User(
@@ -260,10 +238,10 @@ def test_export_money_moves_confirmed(db_session, test_user, test_treasurer):
     confirmed_time = datetime.utcnow()
     money_move = MoneyMove(
         type=MoneyMoveType.PAYOUT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=500,
         note="Test payout",
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.CONFIRMED,
         confirmed_at=confirmed_time,
         confirmed_by=confirmer.id
@@ -284,14 +262,14 @@ def test_export_money_moves_confirmed(db_session, test_user, test_treasurer):
     assert data_row[8] == "Confirmer"     # Confirmed By
 
 
-def test_export_money_moves_no_note(db_session, test_user, test_treasurer):
+def test_export_money_moves_no_note(db_session, db_test_user, db_test_treasurer):
     """Test exporting money move without note"""
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=1000,
         # note is None
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.PENDING
     )
     db_session.add(money_move)
@@ -320,7 +298,7 @@ def test_export_user_balances_empty(db_session):
     assert rows[0] == ['User', 'Balance (€)', 'Role', 'Active']
 
 
-def test_export_user_balances_with_data(db_session, test_user, test_treasurer):
+def test_export_user_balances_with_data(db_session, db_test_user, db_test_treasurer):
     """Test exporting user balances with data"""
     balances = [
         {
@@ -422,7 +400,7 @@ def test_export_currency_formatting(db_session):
     assert rows[4][1] == "12.34"
 
 
-def test_csv_export_special_characters(db_session, test_treasurer):
+def test_csv_export_special_characters(db_session, db_test_treasurer):
     """Test CSV export handles special characters correctly"""
     # Create user with special characters
     special_user = User(
@@ -450,7 +428,7 @@ def test_csv_export_special_characters(db_session, test_treasurer):
         qty=1,
         unit_price_cents=250,
         amount_cents=250,
-        created_by=test_treasurer.id
+        created_by=db_test_treasurer.id
     )
     db_session.add(consumption)
     db_session.commit()

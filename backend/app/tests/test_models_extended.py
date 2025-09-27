@@ -2,38 +2,14 @@
 Test consumption, money move, and audit models
 """
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.session import Base
 from app.models import User, Product, Consumption, MoneyMove, Audit
 from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus
 import uuid
 from datetime import datetime
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_models_extended.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 @pytest.fixture
-def db_session():
-    # Create a new database for each test
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        # Clean up all tables after each test
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture
-def test_user(db_session):
+def db_test_user(db_session):
     """Create a test user"""
     user = User(
         display_name="Test User",
@@ -47,7 +23,7 @@ def test_user(db_session):
 
 
 @pytest.fixture
-def test_treasurer(db_session):
+def db_test_treasurer(db_session):
     """Create a test treasurer"""
     treasurer = User(
         display_name="Test Treasurer",
@@ -61,7 +37,7 @@ def test_treasurer(db_session):
 
 
 @pytest.fixture
-def test_product(db_session):
+def db_test_product(db_session):
     """Create a test product"""
     product = Product(
         name="Coffee",
@@ -75,15 +51,15 @@ def test_product(db_session):
 
 
 # Consumption Model Tests
-def test_consumption_model_creation(db_session, test_user, test_product, test_treasurer):
+def test_consumption_model_creation(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test creating a consumption model"""
     consumption = Consumption(
-        user_id=test_user.id,
-        product_id=test_product.id,
+        user_id=db_test_user.id,
+        product_id=db_test_product.id,
         qty=2,
         unit_price_cents=150,
         amount_cents=300,
-        created_by=test_treasurer.id
+        created_by=db_test_treasurer.id
     )
     
     db_session.add(consumption)
@@ -91,24 +67,24 @@ def test_consumption_model_creation(db_session, test_user, test_product, test_tr
     db_session.refresh(consumption)
     
     assert consumption.id is not None
-    assert consumption.user_id == test_user.id
-    assert consumption.product_id == test_product.id
+    assert consumption.user_id == db_test_user.id
+    assert consumption.product_id == db_test_product.id
     assert consumption.qty == 2
     assert consumption.unit_price_cents == 150
     assert consumption.amount_cents == 300
-    assert consumption.created_by == test_treasurer.id
+    assert consumption.created_by == db_test_treasurer.id
     assert consumption.at is not None
 
 
-def test_consumption_model_relationships(db_session, test_user, test_product, test_treasurer):
+def test_consumption_model_relationships(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test consumption model relationships"""
     consumption = Consumption(
-        user_id=test_user.id,
-        product_id=test_product.id,
+        user_id=db_test_user.id,
+        product_id=db_test_product.id,
         qty=1,
         unit_price_cents=150,
         amount_cents=150,
-        created_by=test_treasurer.id
+        created_by=db_test_treasurer.id
     )
     
     db_session.add(consumption)
@@ -131,15 +107,15 @@ def test_consumption_model_relationships(db_session, test_user, test_product, te
     assert test_treasurer.created_consumptions[0].id == consumption.id
 
 
-def test_consumption_model_repr(db_session, test_user, test_product, test_treasurer):
+def test_consumption_model_repr(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test consumption model string representation"""
     consumption = Consumption(
-        user_id=test_user.id,
-        product_id=test_product.id,
+        user_id=db_test_user.id,
+        product_id=db_test_product.id,
         qty=2,
         unit_price_cents=150,
         amount_cents=300,
-        created_by=test_treasurer.id
+        created_by=db_test_treasurer.id
     )
     
     db_session.add(consumption)
@@ -154,15 +130,15 @@ def test_consumption_model_repr(db_session, test_user, test_product, test_treasu
     assert str(consumption.qty) in repr_str
 
 
-def test_consumption_model_uuid_primary_key(db_session, test_user, test_product, test_treasurer):
+def test_consumption_model_uuid_primary_key(db_session, db_test_user, db_test_product, db_test_treasurer):
     """Test that consumption has UUID primary key"""
     consumption = Consumption(
-        user_id=test_user.id,
-        product_id=test_product.id,
+        user_id=db_test_user.id,
+        product_id=db_test_product.id,
         qty=1,
         unit_price_cents=150,
         amount_cents=150,
-        created_by=test_treasurer.id
+        created_by=db_test_treasurer.id
     )
     
     db_session.add(consumption)
@@ -175,14 +151,14 @@ def test_consumption_model_uuid_primary_key(db_session, test_user, test_product,
 
 
 # MoneyMove Model Tests
-def test_money_move_model_creation_deposit(db_session, test_user, test_treasurer):
+def test_money_move_model_creation_deposit(db_session, db_test_user, test_treasurer):
     """Test creating a deposit money move model"""
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=1000,
         note="Test deposit",
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.PENDING
     )
     
@@ -192,23 +168,23 @@ def test_money_move_model_creation_deposit(db_session, test_user, test_treasurer
     
     assert money_move.id is not None
     assert money_move.type == MoneyMoveType.DEPOSIT
-    assert money_move.user_id == test_user.id
+    assert money_move.user_id == db_test_user.id
     assert money_move.amount_cents == 1000
     assert money_move.note == "Test deposit"
-    assert money_move.created_by == test_treasurer.id
+    assert money_move.created_by == db_test_treasurer.id
     assert money_move.status == MoneyMoveStatus.PENDING
     assert money_move.created_at is not None
     assert money_move.confirmed_at is None
     assert money_move.confirmed_by is None
 
 
-def test_money_move_model_creation_payout(db_session, test_user, test_treasurer):
+def test_money_move_model_creation_payout(db_session, db_test_user, test_treasurer):
     """Test creating a payout money move model"""
     money_move = MoneyMove(
         type=MoneyMoveType.PAYOUT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=500,
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.PENDING
     )
     
@@ -221,7 +197,7 @@ def test_money_move_model_creation_payout(db_session, test_user, test_treasurer)
     assert money_move.note is None  # Optional field
 
 
-def test_money_move_model_confirmation(db_session, test_user, test_treasurer):
+def test_money_move_model_confirmation(db_session, db_test_user, test_treasurer):
     """Test money move confirmation process"""
     # Create second treasurer for confirmation
     treasurer2 = User(
@@ -235,9 +211,9 @@ def test_money_move_model_confirmation(db_session, test_user, test_treasurer):
     
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=1000,
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.PENDING
     )
     
@@ -258,7 +234,7 @@ def test_money_move_model_confirmation(db_session, test_user, test_treasurer):
     assert money_move.confirmed_by == treasurer2.id
 
 
-def test_money_move_model_relationships(db_session, test_user, test_treasurer):
+def test_money_move_model_relationships(db_session, db_test_user, test_treasurer):
     """Test money move model relationships"""
     # Create confirmer
     confirmer = User(
@@ -272,9 +248,9 @@ def test_money_move_model_relationships(db_session, test_user, test_treasurer):
     
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=1000,
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.CONFIRMED,
         confirmed_by=confirmer.id,
         confirmed_at=datetime.utcnow()
@@ -300,13 +276,13 @@ def test_money_move_model_relationships(db_session, test_user, test_treasurer):
     assert confirmer.confirmed_money_moves[0].id == money_move.id
 
 
-def test_money_move_model_repr(db_session, test_user, test_treasurer):
+def test_money_move_model_repr(db_session, db_test_user, test_treasurer):
     """Test money move model string representation"""
     money_move = MoneyMove(
         type=MoneyMoveType.DEPOSIT,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=1000,
-        created_by=test_treasurer.id,
+        created_by=db_test_treasurer.id,
         status=MoneyMoveStatus.PENDING
     )
     
@@ -322,7 +298,7 @@ def test_money_move_model_repr(db_session, test_user, test_treasurer):
     assert "1000" in repr_str
 
 
-def test_money_move_model_statuses(db_session, test_user, test_treasurer):
+def test_money_move_model_statuses(db_session, db_test_user, test_treasurer):
     """Test different money move statuses"""
     # Test all status types
     statuses = [MoneyMoveStatus.PENDING, MoneyMoveStatus.CONFIRMED, MoneyMoveStatus.REJECTED]
@@ -330,9 +306,9 @@ def test_money_move_model_statuses(db_session, test_user, test_treasurer):
     for status in statuses:
         money_move = MoneyMove(
             type=MoneyMoveType.DEPOSIT,
-            user_id=test_user.id,
+            user_id=db_test_user.id,
             amount_cents=1000,
-            created_by=test_treasurer.id,
+            created_by=db_test_treasurer.id,
             status=status
         )
         
@@ -350,7 +326,7 @@ def test_audit_model_creation(db_session, test_user):
     meta_data = {"test": "data", "number": 123}
     
     audit = Audit(
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="create",
         entity="test_entity",
         entity_id=entity_id,
@@ -362,7 +338,7 @@ def test_audit_model_creation(db_session, test_user):
     db_session.refresh(audit)
     
     assert audit.id is not None
-    assert audit.actor_id == test_user.id
+    assert audit.actor_id == db_test_user.id
     assert audit.action == "create"
     assert audit.entity == "test_entity"
     assert audit.entity_id == entity_id
@@ -373,7 +349,7 @@ def test_audit_model_creation(db_session, test_user):
 def test_audit_model_relationships(db_session, test_user):
     """Test audit model relationships"""
     audit = Audit(
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="create",
         entity="test_entity",
         entity_id=uuid.uuid4(),
@@ -396,7 +372,7 @@ def test_audit_model_repr(db_session, test_user):
     """Test audit model string representation"""
     entity_id = uuid.uuid4()
     audit = Audit(
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="create",
         entity="test_entity",
         entity_id=entity_id,
@@ -428,7 +404,7 @@ def test_audit_model_json_metadata(db_session, test_user):
     }
     
     audit = Audit(
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="update",
         entity="complex_entity",
         entity_id=uuid.uuid4(),
@@ -451,7 +427,7 @@ def test_audit_model_json_metadata(db_session, test_user):
 def test_audit_model_optional_metadata(db_session, test_user):
     """Test audit model with no metadata"""
     audit = Audit(
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="delete",
         entity="simple_entity",
         entity_id=uuid.uuid4()
@@ -469,7 +445,7 @@ def test_audit_model_uuid_fields(db_session, test_user):
     """Test that audit model has proper UUID fields"""
     entity_id = uuid.uuid4()
     audit = Audit(
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="create",
         entity="test_entity",
         entity_id=entity_id

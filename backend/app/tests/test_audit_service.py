@@ -2,36 +2,14 @@
 Test audit service functionality
 """
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.session import Base
 from app.models import User, Audit
 from app.services.audit import AuditService
 from app.core.enums import UserRole, AuditAction
 import uuid
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_audit_service.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 @pytest.fixture
-def db_session():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture
-def test_user(db_session):
+def db_test_user(db_session):
     user = User(
         display_name="Test User",
         role=UserRole.USER,
@@ -44,7 +22,7 @@ def test_user(db_session):
 
 
 @pytest.fixture
-def test_treasurer(db_session):
+def db_test_treasurer(db_session):
     treasurer = User(
         display_name="Test Treasurer",
         role=UserRole.TREASURER,
@@ -56,14 +34,14 @@ def test_treasurer(db_session):
     return treasurer
 
 
-def test_log_action_basic(db_session, test_user):
+def test_log_action_basic(db_session, db_test_user):
     """Test basic audit logging functionality"""
     entity_id = uuid.uuid4()
     meta_data = {"test": "value", "number": 42}
     
     audit_entry = AuditService.log_action(
         db=db_session,
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="create",
         entity="test_entity",
         entity_id=entity_id,
@@ -71,7 +49,7 @@ def test_log_action_basic(db_session, test_user):
     )
     
     assert audit_entry.id is not None
-    assert audit_entry.actor_id == test_user.id
+    assert audit_entry.actor_id == db_test_user.id
     assert audit_entry.action == "create"
     assert audit_entry.entity == "test_entity"
     assert audit_entry.entity_id == entity_id
@@ -84,13 +62,13 @@ def test_log_action_basic(db_session, test_user):
     assert saved_audit.meta_json == meta_data
 
 
-def test_log_action_without_metadata(db_session, test_user):
+def test_log_action_without_metadata(db_session, db_test_user):
     """Test audit logging without metadata"""
     entity_id = uuid.uuid4()
     
     audit_entry = AuditService.log_action(
         db=db_session,
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="delete",
         entity="simple_entity",
         entity_id=entity_id
@@ -101,7 +79,7 @@ def test_log_action_without_metadata(db_session, test_user):
     assert audit_entry.entity == "simple_entity"
 
 
-def test_log_consumption_created(db_session, test_treasurer, test_user):
+def test_log_consumption_created(db_session, db_test_treasurer, db_test_user):
     """Test logging consumption creation"""
     consumption_id = uuid.uuid4()
     product_name = "Coffee"
@@ -110,28 +88,28 @@ def test_log_consumption_created(db_session, test_treasurer, test_user):
     
     audit_entry = AuditService.log_consumption_created(
         db=db_session,
-        actor_id=test_treasurer.id,
+        actor_id=db_test_treasurer.id,
         consumption_id=consumption_id,
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         product_name=product_name,
         qty=qty,
         amount_cents=amount_cents
     )
     
-    assert audit_entry.actor_id == test_treasurer.id
+    assert audit_entry.actor_id == db_test_treasurer.id
     assert audit_entry.action == AuditAction.CREATE
     assert audit_entry.entity == "consumption"
     assert audit_entry.entity_id == consumption_id
     
     # Check metadata
     meta = audit_entry.meta_json
-    assert meta["user_id"] == str(test_user.id)
+    assert meta["user_id"] == str(db_test_user.id)
     assert meta["product_name"] == product_name
     assert meta["qty"] == qty
     assert meta["amount_cents"] == amount_cents
 
 
-def test_log_money_move_created_deposit(db_session, test_treasurer, test_user):
+def test_log_money_move_created_deposit(db_session, db_test_treasurer, db_test_user):
     """Test logging money move (deposit) creation"""
     money_move_id = uuid.uuid4()
     amount_cents = 1000
@@ -139,15 +117,15 @@ def test_log_money_move_created_deposit(db_session, test_treasurer, test_user):
     
     audit_entry = AuditService.log_money_move_created(
         db=db_session,
-        actor_id=test_treasurer.id,
+        actor_id=db_test_treasurer.id,
         money_move_id=money_move_id,
         move_type="deposit",
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=amount_cents,
         note=note
     )
     
-    assert audit_entry.actor_id == test_treasurer.id
+    assert audit_entry.actor_id == db_test_treasurer.id
     assert audit_entry.action == AuditAction.CREATE
     assert audit_entry.entity == "money_move"
     assert audit_entry.entity_id == money_move_id
@@ -155,22 +133,22 @@ def test_log_money_move_created_deposit(db_session, test_treasurer, test_user):
     # Check metadata
     meta = audit_entry.meta_json
     assert meta["type"] == "deposit"
-    assert meta["user_id"] == str(test_user.id)
+    assert meta["user_id"] == str(db_test_user.id)
     assert meta["amount_cents"] == amount_cents
     assert meta["note"] == note
 
 
-def test_log_money_move_created_payout_no_note(db_session, test_treasurer, test_user):
+def test_log_money_move_created_payout_no_note(db_session, db_test_treasurer, db_test_user):
     """Test logging money move (payout) creation without note"""
     money_move_id = uuid.uuid4()
     amount_cents = 500
     
     audit_entry = AuditService.log_money_move_created(
         db=db_session,
-        actor_id=test_treasurer.id,
+        actor_id=db_test_treasurer.id,
         money_move_id=money_move_id,
         move_type="payout",
-        user_id=test_user.id,
+        user_id=db_test_user.id,
         amount_cents=amount_cents
     )
     
@@ -182,18 +160,18 @@ def test_log_money_move_created_payout_no_note(db_session, test_treasurer, test_
     assert meta["note"] is None
 
 
-def test_log_money_move_confirmed(db_session, test_treasurer):
+def test_log_money_move_confirmed(db_session, db_test_treasurer):
     """Test logging money move confirmation"""
     money_move_id = uuid.uuid4()
     
     audit_entry = AuditService.log_money_move_confirmed(
         db=db_session,
-        actor_id=test_treasurer.id,
+        actor_id=db_test_treasurer.id,
         money_move_id=money_move_id,
         status="confirmed"
     )
     
-    assert audit_entry.actor_id == test_treasurer.id
+    assert audit_entry.actor_id == db_test_treasurer.id
     assert audit_entry.action == AuditAction.CONFIRM
     assert audit_entry.entity == "money_move"
     assert audit_entry.entity_id == money_move_id
@@ -203,18 +181,18 @@ def test_log_money_move_confirmed(db_session, test_treasurer):
     assert meta["status"] == "confirmed"
 
 
-def test_log_money_move_rejected(db_session, test_treasurer):
+def test_log_money_move_rejected(db_session, db_test_treasurer):
     """Test logging money move rejection"""
     money_move_id = uuid.uuid4()
     
     audit_entry = AuditService.log_money_move_confirmed(
         db=db_session,
-        actor_id=test_treasurer.id,
+        actor_id=db_test_treasurer.id,
         money_move_id=money_move_id,
         status="rejected"
     )
     
-    assert audit_entry.actor_id == test_treasurer.id
+    assert audit_entry.actor_id == db_test_treasurer.id
     assert audit_entry.action == AuditAction.REJECT
     assert audit_entry.entity == "money_move"
     assert audit_entry.entity_id == money_move_id
@@ -224,14 +202,14 @@ def test_log_money_move_rejected(db_session, test_treasurer):
     assert meta["status"] == "rejected"
 
 
-def test_multiple_audit_entries(db_session, test_user, test_treasurer):
+def test_multiple_audit_entries(db_session, test_user, db_test_treasurer):
     """Test creating multiple audit entries"""
     # Create multiple entries
     entries = []
     for i in range(3):
         entry = AuditService.log_action(
             db=db_session,
-            actor_id=test_user.id if i % 2 == 0 else test_treasurer.id,
+            actor_id=db_test_user.id if i % 2 == 0 else db_test_treasurer.id,
             action=f"action_{i}",
             entity=f"entity_{i}",
             entity_id=uuid.uuid4(),
@@ -248,14 +226,14 @@ def test_multiple_audit_entries(db_session, test_user, test_treasurer):
     assert len(set(entry_ids)) == 3  # All unique
 
 
-def test_audit_entry_timestamps(db_session, test_user):
+def test_audit_entry_timestamps(db_session, db_test_user):
     """Test that audit entries have proper timestamps"""
     import time
     
     # Create first entry
     entry1 = AuditService.log_action(
         db=db_session,
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="first",
         entity="test",
         entity_id=uuid.uuid4()
@@ -266,7 +244,7 @@ def test_audit_entry_timestamps(db_session, test_user):
     # Create second entry
     entry2 = AuditService.log_action(
         db=db_session,
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="second",
         entity="test",
         entity_id=uuid.uuid4()
@@ -276,7 +254,7 @@ def test_audit_entry_timestamps(db_session, test_user):
     assert entry2.at >= entry1.at
 
 
-def test_audit_service_complex_metadata(db_session, test_user):
+def test_audit_service_complex_metadata(db_session, db_test_user):
     """Test audit service with complex metadata"""
     complex_data = {
         "user_info": {
@@ -296,7 +274,7 @@ def test_audit_service_complex_metadata(db_session, test_user):
     
     audit_entry = AuditService.log_action(
         db=db_session,
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="complex_action",
         entity="complex_entity",
         entity_id=uuid.uuid4(),
@@ -312,11 +290,11 @@ def test_audit_service_complex_metadata(db_session, test_user):
     assert saved_meta["flags"] == [True, False, True]
 
 
-def test_audit_service_actor_relationship(db_session, test_user):
+def test_audit_service_actor_relationship(db_session, db_test_user):
     """Test that audit entries maintain proper relationship to actor"""
     audit_entry = AuditService.log_action(
         db=db_session,
-        actor_id=test_user.id,
+        actor_id=db_test_user.id,
         action="test",
         entity="test",
         entity_id=uuid.uuid4()
