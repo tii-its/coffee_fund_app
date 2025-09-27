@@ -80,7 +80,7 @@ def update_product(
         raise HTTPException(status_code=404, detail="Product not found")
     
     # Update fields
-    update_data = product_update.dict(exclude_unset=True)
+    update_data = product_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(product, field, value)
     

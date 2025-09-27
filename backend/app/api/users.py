@@ -83,7 +83,7 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Update fields
-    update_data = user_update.dict(exclude_unset=True)
+    update_data = user_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
     
@@ -112,7 +112,7 @@ def get_user_balance(user_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     
     balance = BalanceService.get_user_balance(db, str(user_id))
-    return UserBalance(user=UserResponse.from_orm(user), balance_cents=balance)
+    return UserBalance(user=UserResponse.model_validate(user), balance_cents=balance)
 
 
 @router.get("/{user_id}/qr-code")
