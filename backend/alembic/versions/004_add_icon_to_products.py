@@ -1,7 +1,7 @@
 """add_icon_to_products
 
 Revision ID: 004
-Revises: 003_normalize_emails
+Revises: 002_add_stock_purchases
 Create Date: 2024-01-15 10:00:00.000000
 
 """
