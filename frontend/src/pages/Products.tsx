@@ -1,21 +1,110 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { productsApi } from '@/api/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useAppStore } from '@/store'
+import { ProductModal } from '@/components/ProductModal'
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
+import type { Product, ProductCreate, ProductUpdate } from '@/api/types'
+
+type ProductFormData = {
+  name: string
+  price_cents: number
+  is_active: boolean
+}
 
 const Products: React.FC = () => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const { currentUser } = useAppStore()
+  
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
-    queryFn: () => productsApi.getAll().then((res) => res.data),
+    queryFn: () => productsApi.getAll({ active_only: false }).then((res) => res.data),
   })
+
+  const createMutation = useMutation({
+    mutationFn: (product: ProductCreate) => 
+      productsApi.create(product, currentUser?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setIsCreateModalOpen(false)
+      // TODO: Add success toast notification
+    },
+    onError: (error) => {
+      console.error('Failed to create product:', error)
+      // TODO: Add error toast notification
+    }
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, product }: { id: string; product: ProductUpdate }) =>
+      productsApi.update(id, product, currentUser?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setIsEditModalOpen(false)
+      setSelectedProduct(null)
+      // TODO: Add success toast notification
+    },
+    onError: (error) => {
+      console.error('Failed to update product:', error)
+      // TODO: Add error toast notification
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => productsApi.delete(id, currentUser?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      setIsDeleteModalOpen(false)
+      setSelectedProduct(null)
+      // TODO: Add success toast notification
+    },
+    onError: (error) => {
+      console.error('Failed to delete product:', error)
+      // TODO: Add error toast notification
+    }
+  })
+
+  const handleCreateProduct = (product: ProductFormData) => {
+    createMutation.mutate(product as ProductCreate)
+  }
+
+  const handleEditProduct = (product: ProductFormData) => {
+    if (selectedProduct) {
+      updateMutation.mutate({
+        id: selectedProduct.id,
+        product: product as ProductUpdate
+      })
+    }
+  }
+
+  const handleDeleteProduct = () => {
+    if (selectedProduct) {
+      deleteMutation.mutate(selectedProduct.id)
+    }
+  }
+
+  const openEditModal = (product: Product) => {
+    setSelectedProduct(product)
+    setIsEditModalOpen(true)
+  }
+
+  const openDeleteModal = (product: Product) => {
+    setSelectedProduct(product)
+    setIsDeleteModalOpen(true)
+  }
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="loading"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -24,12 +113,15 @@ const Products: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">{t('navigation.products')}</h2>
-        <button className="btn btn-primary">
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
           {t('product.createProduct')}
         </button>
       </div>
 
-      <div className="card">
+      <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -66,8 +158,10 @@ const Products: React.FC = () => {
                     </p>
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`badge ${
-                      product.is_active ? 'badge-success' : 'badge-danger'
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      product.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
                     }`}>
                       {product.is_active ? t('common.active') : t('common.inactive')}
                     </span>
@@ -77,11 +171,17 @@ const Products: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex space-x-2">
-                      <button className="btn btn-outline btn-sm">
+                      <button 
+                        onClick={() => openEditModal(product)}
+                        className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      >
                         {t('common.edit')}
                       </button>
                       {product.is_active && (
-                        <button className="btn btn-danger btn-sm">
+                        <button 
+                          onClick={() => openDeleteModal(product)}
+                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
                           {t('common.delete')}
                         </button>
                       )}
@@ -91,8 +191,46 @@ const Products: React.FC = () => {
               ))}
             </tbody>
           </table>
+          
+          {products.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <p>{t('errors.fetchFailed')}</p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Create Product Modal */}
+      <ProductModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateProduct}
+        title={t('product.createProduct')}
+      />
+
+      {/* Edit Product Modal */}
+      <ProductModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setSelectedProduct(null)
+        }}
+        onSubmit={handleEditProduct}
+        product={selectedProduct}
+        title={t('product.editProduct')}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setSelectedProduct(null)
+        }}
+        onConfirm={handleDeleteProduct}
+        title={t('common.delete')}
+        message={`Are you sure you want to deactivate "${selectedProduct?.name}"? This action cannot be undone.`}
+      />
     </div>
   )
 }
