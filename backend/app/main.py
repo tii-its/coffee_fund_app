@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import users, products, consumptions, money_moves, exports, audit, settings as settings_router
+from app.api import users, products, consumptions, money_moves, exports, audit, settings as settings_router, stock_purchases
 
 app = FastAPI(
     title="Coffee Fund API",
@@ -43,6 +43,7 @@ app.include_router(users.router)
 app.include_router(products.router)
 app.include_router(consumptions.router)
 app.include_router(money_moves.router)
+app.include_router(stock_purchases.router)
 app.include_router(exports.router)
 app.include_router(audit.router)
 app.include_router(settings_router.router)

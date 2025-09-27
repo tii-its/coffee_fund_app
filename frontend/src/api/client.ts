@@ -14,6 +14,10 @@ import type {
   AuditEntry,
   Settings,
   HealthCheck,
+  StockPurchase,
+  StockPurchaseWithCreator,
+  StockPurchaseCreate,
+  StockPurchaseUpdate,
 } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
@@ -194,6 +198,36 @@ export const settingsApi = {
   get: () => api.get<Settings>('/settings/'),
   
   health: () => api.get<HealthCheck>('/settings/health'),
+}
+
+// Stock Purchases API
+export const stockPurchasesApi = {
+  getAll: (params?: {
+    skip?: number
+    limit?: number
+    cash_out_processed?: boolean
+  }) => api.get<StockPurchaseWithCreator[]>('/stock-purchases/', { params }),
+  
+  getById: (id: string) =>
+    api.get<StockPurchaseWithCreator>(`/stock-purchases/${id}`),
+  
+  create: (stockPurchase: StockPurchaseCreate, creator_id: string) =>
+    api.post<StockPurchase>('/stock-purchases/', stockPurchase, {
+      params: { creator_id },
+    }),
+  
+  update: (id: string, stockPurchase: StockPurchaseUpdate, actor_id: string) =>
+    api.patch<StockPurchase>(`/stock-purchases/${id}`, stockPurchase, {
+      params: { actor_id },
+    }),
+  
+  processCashOut: (id: string, actor_id: string) =>
+    api.patch<StockPurchase>(`/stock-purchases/${id}/cash-out`, null, {
+      params: { actor_id },
+    }),
+  
+  delete: (id: string, actor_id: string) =>
+    api.delete(`/stock-purchases/${id}`, { params: { actor_id } }),
 }
 
 export default api
