@@ -51,3 +51,9 @@ class BalanceService:
         """Get users with balance below threshold"""
         all_balances = BalanceService.get_all_user_balances(db)
         return [balance for balance in all_balances if balance.balance_cents < threshold_cents]
+
+    @staticmethod
+    def get_users_above_threshold(db: Session, threshold_cents: int) -> List[UserBalance]:
+        """Get users with balance above or equal to threshold"""
+        all_balances = BalanceService.get_all_user_balances(db)
+        return [balance for balance in all_balances if balance.balance_cents >= threshold_cents]

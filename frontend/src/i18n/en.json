@@ -94,7 +94,8 @@
     "confirmPurchase": "Confirm Purchase",
     "purchaseComplete": "Purchase Complete!",
     "userBalance": "Current Balance",
-    "belowThreshold": "Balance below threshold"
+    "belowThreshold": "Balance below threshold",
+    "aboveThreshold": "Balance above threshold"
   },
   "dashboard": {
     "currentBalance": "Current Balance",
@@ -110,7 +111,8 @@
     "exportConsumptions": "Export Consumptions",
     "exportMoneyMoves": "Export Money Moves",
     "exportBalances": "Export Balances",
-    "belowThreshold": "Users Below Threshold"
+    "belowThreshold": "Users Below Threshold",
+    "aboveThreshold": "Users Above Threshold"
   },
   "errors": {
     "fetchFailed": "Failed to fetch data",

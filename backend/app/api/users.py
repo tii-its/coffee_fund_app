@@ -139,3 +139,12 @@ def get_users_below_threshold(
 ):
     """Get users with balance below threshold"""
     return BalanceService.get_users_below_threshold(db, threshold_cents)
+
+
+@router.get("/balances/above-threshold", response_model=List[UserBalance])
+def get_users_above_threshold(
+    threshold_cents: int = Query(1000, description="Threshold in cents"),
+    db: Session = Depends(get_db)
+):
+    """Get users with balance above or equal to threshold"""
+    return BalanceService.get_users_above_threshold(db, threshold_cents)

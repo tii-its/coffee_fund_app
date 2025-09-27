@@ -94,7 +94,8 @@
     "confirmPurchase": "Kauf bestätigen",
     "purchaseComplete": "Kauf abgeschlossen!",
     "userBalance": "Aktueller Saldo",
-    "belowThreshold": "Saldo unter Schwellenwert"
+    "belowThreshold": "Saldo unter Schwellenwert",
+    "aboveThreshold": "Saldo über Schwellenwert"
   },
   "dashboard": {
     "currentBalance": "Aktueller Saldo",
@@ -110,7 +111,8 @@
     "exportConsumptions": "Verbrauch exportieren",
     "exportMoneyMoves": "Geldtransfers exportieren",
     "exportBalances": "Salden exportieren",
-    "belowThreshold": "Benutzer unter Schwellenwert"
+    "belowThreshold": "Benutzer unter Schwellenwert",
+    "aboveThreshold": "Benutzer über Schwellenwert"
   },
   "errors": {
     "fetchFailed": "Daten konnten nicht geladen werden",

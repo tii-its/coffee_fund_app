@@ -61,6 +61,11 @@ export const usersApi = {
     api.get<UserBalance[]>('/users/balances/below-threshold', {
       params: { threshold_cents },
     }),
+  
+  getAboveThreshold: (threshold_cents?: number) =>
+    api.get<UserBalance[]>('/users/balances/above-threshold', {
+      params: { threshold_cents },
+    }),
 }
 
 // Products API
