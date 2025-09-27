@@ -18,11 +18,17 @@ interface AppState {
   // Current "logged in" user (for actions that require a user ID)
   currentUser: User | null
   setCurrentUser: (user: User | null) => void
+  
+  // Treasurer authentication
+  treasurerAuthenticated: boolean
+  setTreasurerAuthenticated: (authenticated: boolean) => void
+  authTimestamp: number | null
+  setAuthTimestamp: (timestamp: number | null) => void
 }
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       selectedUser: null,
       setSelectedUser: (user) => set({ selectedUser: user }),
       
@@ -34,6 +40,14 @@ export const useAppStore = create<AppState>()(
       
       currentUser: null,
       setCurrentUser: (user) => set({ currentUser: user }),
+      
+      treasurerAuthenticated: false,
+      setTreasurerAuthenticated: (authenticated) => {
+        const timestamp = authenticated ? Date.now() : null
+        set({ treasurerAuthenticated: authenticated, authTimestamp: timestamp })
+      },
+      authTimestamp: null,
+      setAuthTimestamp: (timestamp) => set({ authTimestamp: timestamp }),
     }),
     {
       name: 'coffee-fund-store',
@@ -41,6 +55,8 @@ export const useAppStore = create<AppState>()(
         language: state.language,
         sidebarOpen: state.sidebarOpen,
         currentUser: state.currentUser,
+        treasurerAuthenticated: state.treasurerAuthenticated,
+        authTimestamp: state.authTimestamp,
       }),
     }
   )

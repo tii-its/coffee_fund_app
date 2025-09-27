@@ -132,6 +132,13 @@
     "newPin": "New PIN",
     "changeSuccess": "PIN changed successfully"
   },
+  "auth": {
+    "restricted": "Restricted Area",
+    "treasurerOnly": "This area is restricted to treasurers only",
+    "enterPin": "Enter PIN",
+    "treasurerAccess": "Treasurer Access",
+    "enterTreasurerPin": "Please enter the treasurer PIN to access this area"
+  },
   "errors": {
     "fetchFailed": "Failed to fetch data",
     "createFailed": "Failed to create",

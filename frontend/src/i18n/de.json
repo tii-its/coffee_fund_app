@@ -132,6 +132,13 @@
     "newPin": "Neue PIN",
     "changeSuccess": "PIN erfolgreich geändert"
   },
+  "auth": {
+    "restricted": "Eingeschränkter Bereich",
+    "treasurerOnly": "Dieser Bereich ist nur für Verwalter zugänglich",
+    "enterPin": "PIN eingeben",
+    "treasurerAccess": "Verwalter-Zugang",
+    "enterTreasurerPin": "Bitte geben Sie die Verwalter-PIN ein, um auf diesen Bereich zuzugreifen"
+  },
   "errors": {
     "fetchFailed": "Daten konnten nicht geladen werden",
     "createFailed": "Erstellen fehlgeschlagen",
