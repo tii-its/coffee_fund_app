@@ -53,6 +53,18 @@ export interface ProductUpdate {
   is_active?: boolean
 }
 
+export interface UserConsumptionStat {
+  user_id: string
+  display_name: string
+  total_qty: number
+  total_amount_cents: number
+}
+
+export interface ProductConsumptionStats {
+  product: Product
+  top_consumers: UserConsumptionStat[]
+}
+
 export interface Consumption {
   id: string
   user_id: string

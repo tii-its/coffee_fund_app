@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { usersApi, consumptionsApi, moneyMovesApi } from '@/api/client'
+import { usersApi, consumptionsApi, moneyMovesApi, productsApi } from '@/api/client'
 import { formatCurrency, formatDateShort } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import BalanceCard from '@/components/BalanceCard'
@@ -79,6 +79,24 @@ const Dashboard: React.FC = () => {
     queryFn: () => usersApi.getAllBalances().then((res) => res.data),
   })
 
+  // Fetch users below €5 threshold
+  const { data: usersBelowThreshold = [] } = useQuery({
+    queryKey: ['usersBelowThreshold'],
+    queryFn: () => usersApi.getBelowThreshold(500).then((res) => res.data), // 500 cents = €5
+  })
+
+  // Fetch latest added product
+  const { data: latestProduct } = useQuery({
+    queryKey: ['latestProduct'],
+    queryFn: () => productsApi.getLatest().then((res) => res.data),
+  })
+
+  // Fetch product consumption statistics
+  const { data: productConsumptionStats = [] } = useQuery({
+    queryKey: ['productConsumptionStats'],
+    queryFn: () => productsApi.getTopConsumers(3).then((res) => res.data), // Top 3 consumers per product
+  })
+
   if (!selectedUser) {
     return (
       <div>
@@ -90,41 +108,123 @@ const Dashboard: React.FC = () => {
         <UserPicker users={users} onSelect={setSelectedUser} />
         
         {/* Overview Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-2">{t('treasurer.userBalances')}</h3>
-            <p className="text-3xl font-bold text-blue-600">{allBalances.length}</p>
-            <p className="text-gray-600 text-sm">{t('navigation.users')}</p>
-          </div>
-          
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-2">{t('common.total')} {t('common.balance')}</h3>
-            <p className="text-3xl font-bold text-green-600">
-              {formatCurrency(
-                allBalances.reduce((sum, balance) => sum + balance.balance_cents, 0)
+        <div className="mt-8 space-y-6">
+          {/* First Row - Main Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-2">{t('treasurer.userBalances')}</h3>
+              <p className="text-3xl font-bold text-blue-600">{allBalances.length}</p>
+              <p className="text-gray-600 text-sm">{t('navigation.users')}</p>
+            </div>
+            
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-2">{t('common.total')} {t('common.balance')}</h3>
+              <p className="text-3xl font-bold text-green-600">
+                {formatCurrency(
+                  allBalances.reduce((sum, balance) => sum + balance.balance_cents, 0)
+                )}
+              </p>
+              <p className="text-gray-600 text-sm">{t('treasurer.userBalances')}</p>
+            </div>
+            
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-2">{t('treasurer.aboveThreshold')}</h3>
+              <p className="text-3xl font-bold text-green-600">
+                {usersAboveThreshold.length}
+              </p>
+              <p className="text-gray-600 text-sm">≥ €10.00</p>
+              {usersAboveThreshold.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {usersAboveThreshold.map((userBalance) => (
+                    <div key={userBalance.user.id} className="text-sm text-gray-700 flex justify-between">
+                      <span>{userBalance.user.display_name}</span>
+                      <span className="text-green-600 font-medium">
+                        {formatCurrency(userBalance.balance_cents)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               )}
-            </p>
-            <p className="text-gray-600 text-sm">{t('treasurer.userBalances')}</p>
+            </div>
           </div>
-          
-          <div className="card">
-            <h3 className="text-lg font-semibold mb-2">{t('treasurer.aboveThreshold')}</h3>
-            <p className="text-3xl font-bold text-green-600">
-              {usersAboveThreshold.length}
-            </p>
-            <p className="text-gray-600 text-sm">≥ €10.00</p>
-            {usersAboveThreshold.length > 0 && (
-              <div className="mt-3 space-y-1">
-                {usersAboveThreshold.map((userBalance) => (
-                  <div key={userBalance.user.id} className="text-sm text-gray-700 flex justify-between">
-                    <span>{userBalance.user.display_name}</span>
-                    <span className="text-green-600 font-medium">
-                      {formatCurrency(userBalance.balance_cents)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+
+          {/* Second Row - New Features */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Users Below €5 */}
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-2">Users Below €5</h3>
+              <p className="text-3xl font-bold text-red-600">
+                {usersBelowThreshold.length}
+              </p>
+              <p className="text-gray-600 text-sm">Need to recharge</p>
+              {usersBelowThreshold.length > 0 && (
+                <div className="mt-3 space-y-1 max-h-32 overflow-y-auto">
+                  {usersBelowThreshold.map((userBalance) => (
+                    <div key={userBalance.user.id} className="text-sm text-gray-700 flex justify-between">
+                      <span>{userBalance.user.display_name}</span>
+                      <span className="text-red-600 font-medium">
+                        {formatCurrency(userBalance.balance_cents)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Latest Product */}
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-2">Latest Added Product</h3>
+              {latestProduct ? (
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">{latestProduct.name}</p>
+                  <p className="text-lg text-green-600 font-medium">
+                    {formatCurrency(latestProduct.price_cents)}
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    Added {formatDateShort(latestProduct.created_at)}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500">No products available</p>
+              )}
+            </div>
+          </div>
+
+          {/* Third Row - Product Consumption Stats */}
+          <div className="grid grid-cols-1 gap-6">
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Top Consumers by Product</h3>
+              {productConsumptionStats.length > 0 ? (
+                <div className="space-y-4">
+                  {productConsumptionStats.map((productStats) => (
+                    <div key={productStats.product.id} className="border-b border-gray-100 pb-4 last:border-b-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-blue-600">{productStats.product.name}</h4>
+                        <span className="text-sm text-gray-500">
+                          {formatCurrency(productStats.product.price_cents)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {productStats.top_consumers.map((consumer, index) => (
+                          <div key={consumer.user_id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div>
+                              <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
+                              <p className="text-sm font-medium">{consumer.display_name}</p>
+                              <p className="text-xs text-gray-600">{consumer.total_qty} items</p>
+                            </div>
+                            <span className="text-sm font-medium text-red-600">
+                              {formatCurrency(consumer.total_amount_cents)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">No consumption data available</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
