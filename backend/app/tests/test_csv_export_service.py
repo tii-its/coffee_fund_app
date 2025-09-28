@@ -14,6 +14,7 @@ from datetime import datetime
 def db_test_user(db_session):
     user = User(
         display_name="Test User",
+        email="csv.user@example.com",
         role=UserRole.USER,
         is_active=True
     )
@@ -27,6 +28,7 @@ def db_test_user(db_session):
 def db_test_treasurer(db_session):
     treasurer = User(
         display_name="Test Treasurer",
+        email="csv.treasurer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -228,6 +230,7 @@ def test_export_money_moves_confirmed(db_session, db_test_user, db_test_treasure
     # Create confirmer
     confirmer = User(
         display_name="Confirmer",
+        email="csv.confirmer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -405,6 +408,7 @@ def test_csv_export_special_characters(db_session, db_test_treasurer):
     # Create user with special characters
     special_user = User(
         display_name="Müller, Hans-Peter \"Test\"",
+        email="csv.special@example.com",
         role=UserRole.USER,
         is_active=True
     )

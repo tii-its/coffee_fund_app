@@ -9,8 +9,10 @@ from uuid import uuid4
 @pytest.fixture
 def test_user(client):
     """Create a test user"""
+    import time
     user_data = {
         "display_name": "Test User",
+        "email": f"test.user.money.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }
@@ -21,8 +23,10 @@ def test_user(client):
 @pytest.fixture
 def test_treasurer(client):
     """Create a test treasurer"""
+    import time
     user_data = {
         "display_name": "Test Treasurer", 
+        "email": f"test.treasurer.money.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True
     }
@@ -33,8 +37,10 @@ def test_treasurer(client):
 @pytest.fixture
 def test_treasurer2(client):
     """Create a second test treasurer"""
+    import time
     user_data = {
         "display_name": "Test Treasurer 2", 
+        "email": f"test.treasurer2.money.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True
     }
@@ -126,8 +132,10 @@ def test_create_money_move_creator_not_found(client, test_user):
 def test_create_money_move_non_treasurer_creator(client, test_user):
     """Test creating money move with non-treasurer creator"""
     # Create another regular user
+    import time
     user2_data = {
         "display_name": "Regular User 2",
+        "email": f"regular.user2.money.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }

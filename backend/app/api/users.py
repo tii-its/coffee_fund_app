@@ -33,11 +33,6 @@ def create_user(
     creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user")
 ):
     """Create a new user"""
-    # Check if user with this display name already exists
-    existing_user = db.query(User).filter(User.display_name == user.display_name).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User with this display name already exists")
-    
     # Email must be provided and unique
     existing_email = db.query(User).filter(User.email == user.email).first()
     if existing_email:

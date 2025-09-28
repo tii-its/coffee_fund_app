@@ -126,6 +126,11 @@ def db_session(test_db):
     connection = test_db.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
+
+    # Clear all tables to ensure isolation from prior API client tests
+    with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
     
     yield session
     
@@ -138,7 +143,11 @@ def db_session(test_db):
 def client(test_db):
     """Create a test client with database dependency override."""
     app.dependency_overrides[get_db] = override_get_db
-    
+    # Ensure isolation: clear tables before each test using a direct connection
+    with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
+
     with TestClient(app) as test_client:
         yield test_client
     
@@ -212,8 +221,10 @@ def db_test_product(db_session):
 @pytest.fixture
 def test_user(client):
     """Create a test user via API and return response."""
+    import time
     user_data = {
         "display_name": "API Test User",
+        "email": f"api.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }
@@ -238,8 +249,10 @@ def test_user(client):
 @pytest.fixture
 def test_treasurer(client):
     """Create a test treasurer via API and return response."""
+    import time
     treasurer_data = {
         "display_name": "API Test Treasurer",
+        "email": f"api.test.treasurer.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True
     }
@@ -291,9 +304,11 @@ def test_product(client):
 @pytest.fixture
 def sample_user_data():
     """Sample user data for testing."""
+    import time
+    ts = int(time.time()*1000)
     return {
         "display_name": "Test User",
-        "email": "test.user@example.com",
+        "email": f"test.user.{ts}@example.com",
         "role": "user", 
         "is_active": True
     }
@@ -302,9 +317,11 @@ def sample_user_data():
 @pytest.fixture
 def sample_treasurer_data():
     """Sample treasurer data for testing."""
+    import time
+    ts = int(time.time()*1000)
     return {
         "display_name": "Test Treasurer",
-        "email": "test.treasurer@example.com",
+        "email": f"test.treasurer.{ts}@example.com",
         "role": "treasurer",
         "is_active": True
     }

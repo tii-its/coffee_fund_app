@@ -204,6 +204,7 @@ def test_money_move_model_confirmation(db_session, db_test_user, db_test_treasur
     # Create second treasurer for confirmation
     treasurer2 = User(
         display_name="Treasurer 2",
+        email="models.treasurer2@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -241,6 +242,7 @@ def test_money_move_model_relationships(db_session, db_test_user, db_test_treasu
     # Create confirmer
     confirmer = User(
         display_name="Confirmer",
+        email="models.confirmer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )

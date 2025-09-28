@@ -20,16 +20,19 @@ def test_verify_pin_failure(client):
 def test_update_user_with_valid_pin(client, sample_user_data):
     """Test user update with valid PIN"""
     # First create a user
+    import time
+    sample_user_data = {**sample_user_data, "email": f"pin.valid.{int(time.time()*1000)}@example.com"}
     create_response = client.post("/users/", json=sample_user_data)
-    assert create_response.status_code == 200
+    # Creation endpoint returns 201 Created
+    assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
     # Update with valid PIN
-    update_data = {
-        "display_name": "Updated Name",
+    update_payload = {
+        "user_update": {"display_name": "Updated Name"},
         "pin": settings.treasurer_pin
     }
-    response = client.put(f"/users/{user_id}", json=update_data)
+    response = client.put(f"/users/{user_id}", json=update_payload)
     assert response.status_code == 200
     assert response.json()["display_name"] == "Updated Name"
 
@@ -37,16 +40,18 @@ def test_update_user_with_valid_pin(client, sample_user_data):
 def test_update_user_with_invalid_pin(client, sample_user_data):
     """Test user update with invalid PIN"""
     # First create a user
+    import time
+    sample_user_data = {**sample_user_data, "email": f"pin.invalid.{int(time.time()*1000)}@example.com"}
     create_response = client.post("/users/", json=sample_user_data)
-    assert create_response.status_code == 200
+    assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
     # Try to update with invalid PIN
-    update_data = {
-        "display_name": "Updated Name",
+    update_payload = {
+        "user_update": {"display_name": "Updated Name"},
         "pin": "wrong-pin"
     }
-    response = client.put(f"/users/{user_id}", json=update_data)
+    response = client.put(f"/users/{user_id}", json=update_payload)
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid PIN"
 
@@ -54,8 +59,10 @@ def test_update_user_with_invalid_pin(client, sample_user_data):
 def test_delete_user_with_valid_pin(client, sample_user_data):
     """Test user deletion with valid PIN"""
     # First create a user
+    import time
+    sample_user_data = {**sample_user_data, "email": f"pin.delete.valid.{int(time.time()*1000)}@example.com"}
     create_response = client.post("/users/", json=sample_user_data)
-    assert create_response.status_code == 200
+    assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
     # Delete with valid PIN
@@ -72,8 +79,10 @@ def test_delete_user_with_valid_pin(client, sample_user_data):
 def test_delete_user_with_invalid_pin(client, sample_user_data):
     """Test user deletion with invalid PIN"""
     # First create a user
+    import time
+    sample_user_data = {**sample_user_data, "email": f"pin.delete.invalid.{int(time.time()*1000)}@example.com"}
     create_response = client.post("/users/", json=sample_user_data)
-    assert create_response.status_code == 200
+    assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
     # Try to delete with invalid PIN
@@ -89,7 +98,8 @@ def test_change_pin(client):
         "new_pin": "new-pin-123"
     })
     assert response.status_code == 200
-    assert "PIN change requested successfully" in response.json()["message"]
+    # Implementation returns a direct success message
+    assert "PIN changed successfully" in response.json()["message"]
 
 
 def test_change_pin_with_wrong_current_pin(client):

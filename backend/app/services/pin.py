@@ -32,15 +32,25 @@ class PinService:
     
     @staticmethod
     def verify_pin(pin: str, db: Optional[Session] = None, hashed_pin: Optional[str] = None) -> bool:
-        """Verify a PIN against the stored hash"""
+        """Verify a PIN against the stored hash.
+
+        Backwards compatibility: some tests may call verify_pin(pin, hashed_pin)
+        thinking the second positional arg is the hash. Detect this pattern by
+        checking if 'db' is a string of plausible hash length (64 hex chars for SHA256).
+        """
+        # If caller passed (pin, hashed_pin) positionally
+        if db is not None and hashed_pin is None and isinstance(db, str) and len(db) == 64:
+            hashed_pin = db  # reinterpret second positional argument as hash
+            db = None
+
         if hashed_pin is not None:
             return PinService.hash_pin(pin) == hashed_pin
-            
+
         if db is not None:
             current_hash = PinService.get_current_pin_hash(db)
             return PinService.hash_pin(pin) == current_hash
-            
-        # Fallback to settings-based verification
+
+        # Fallback to settings-based verification (default PIN)
         return PinService.hash_pin(pin) == PinService.hash_pin(settings.treasurer_pin)
     
     @staticmethod

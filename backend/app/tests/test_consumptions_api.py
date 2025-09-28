@@ -10,8 +10,10 @@ from uuid import uuid4
 @pytest.fixture
 def test_user(client):
     """Create a test user"""
+    import time
     user_data = {
         "display_name": "Test User",
+        "email": f"consumption.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }
@@ -22,8 +24,10 @@ def test_user(client):
 @pytest.fixture
 def test_treasurer(client):
     """Create a test treasurer"""
+    import time
     user_data = {
         "display_name": "Test Treasurer", 
+        "email": f"consumption.test.treasurer.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True
     }

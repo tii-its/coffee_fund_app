@@ -10,8 +10,10 @@ from uuid import uuid4
 @pytest.fixture
 def test_user(client):
     """Create a test user"""
+    import time
     user_data = {
         "display_name": "Test User",
+        "email": f"test.user.exports.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }
@@ -22,8 +24,10 @@ def test_user(client):
 @pytest.fixture
 def test_treasurer(client):
     """Create a test treasurer"""
+    import time
     user_data = {
         "display_name": "Test Treasurer", 
+        "email": f"test.treasurer.exports.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True
     }
@@ -225,8 +229,10 @@ def test_export_money_moves_confirmed(client, test_user, test_treasurer, test_tr
 @pytest.fixture
 def test_treasurer2(client):
     """Create a second test treasurer"""
+    import time
     user_data = {
         "display_name": "Test Treasurer 2", 
+        "email": f"test.treasurer2.exports.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True
     }

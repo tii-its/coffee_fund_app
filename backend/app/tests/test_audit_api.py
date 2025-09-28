@@ -9,8 +9,10 @@ from uuid import uuid4
 @pytest.fixture
 def test_user(client):
     """Create a test user"""
+    import time
     user_data = {
         "display_name": "Test User",
+        "email": f"audit.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }
@@ -22,22 +24,22 @@ def test_user(client):
 def sample_audit_entry(client, test_user):
     """Create a sample audit entry by creating a user (which triggers audit log)"""
     # Creating a user triggers an audit entry via the API
+    import time
     user_data = {
         "display_name": "Audit Test User",
+        "email": f"audit.create.user.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True
     }
     response = client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
     created_user = response.json()
-    
-    # The audit entry was created automatically by the user creation
-    # We'll return info to identify it in tests
-    return {
-        "actor_id": test_user["id"],
-        "action": "create", 
-        "entity": "user",
-        "entity_id": created_user["id"]
-    }
+
+    # Fetch audit entries to find the specific one
+    audit_resp = client.get("/audit/")
+    audit_entries = audit_resp.json()
+    entry = next((e for e in audit_entries if e.get("entity") == "user" and e.get("entity_id") == created_user["id"]), None)
+    assert entry is not None, "Expected audit entry not found"
+    return entry
 
 
 def test_get_audit_entries(client, sample_audit_entry):
@@ -69,13 +71,13 @@ def test_get_audit_entries_with_actor_filter(client, test_user, sample_audit_ent
 
 def test_get_audit_entries_with_entity_filter(client, sample_audit_entry):
     """Test filtering audit entries by entity"""
-    response = client.get("/audit/?entity=test_entity")
+    response = client.get("/audit/?entity=user")
     assert response.status_code == 200
     
     data = response.json()
     assert len(data) >= 1
     for entry in data:
-        assert entry["entity"] == "test_entity"
+        assert entry["entity"] == "user"
 
 
 def test_get_audit_entries_with_entity_id_filter(client, sample_audit_entry):
@@ -92,8 +94,10 @@ def test_get_audit_entries_pagination(client, test_user):
     """Test audit entries pagination"""
     # Create multiple users to generate audit entries
     for i in range(5):
+        import time
         user_data = {
             "display_name": f"Pagination User {i}",
+            "email": f"audit.pagination.{i}.{int(time.time()*1000)}@example.com",
             "role": "user",
             "is_active": True
         }
@@ -118,8 +122,8 @@ def test_get_audit_entry_by_id(client, sample_audit_entry):
     
     data = response.json()
     assert data["id"] == sample_audit_entry["id"]
-    assert data["action"] == "create"
-    assert data["entity"] == "test_entity"
+    assert data["action"] == sample_audit_entry["action"]
+    assert data["entity"] == "user"
 
 
 def test_get_audit_entry_by_id_not_found(client):
@@ -134,8 +138,10 @@ def test_audit_entries_ordered_by_date(client, test_user):
     # Create multiple users to generate audit entries with timestamps
     entry_names = []
     for i in range(3):
+        import time
         user_data = {
             "display_name": f"Order User {i}",
+            "email": f"audit.order.{i}.{int(time.time()*1000)}@example.com",
             "role": "user", 
             "is_active": True
         }
