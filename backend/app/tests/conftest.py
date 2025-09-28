@@ -98,6 +98,12 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 def override_get_db():
     """Override the database dependency for testing."""
     try:
+        # Safety net: make sure all tables exist (idempotent). In some edge cases
+        # (import order or earlier fixture failures) the in-memory schema may not
+        # yet have been created when a direct service call uses this override.
+        # create_all is cheap with SQLite and ensures stability for direct
+        # BalanceService calls inside integration tests.
+        Base.metadata.create_all(bind=engine)
         db = TestingSessionLocal()
         yield db
     finally:
@@ -143,7 +149,9 @@ def db_session(test_db):
 def client(test_db):
     """Create a test client with database dependency override."""
     app.dependency_overrides[get_db] = override_get_db
-    # Ensure isolation: clear tables before each test using a direct connection
+    # Clear all tables before each client-based test to ensure isolation between
+    # API tests that don't use the db_session fixture. This avoids state bleed
+    # causing count/order assertions to fail.
     with engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             conn.execute(table.delete())
@@ -277,8 +285,9 @@ def test_treasurer(client):
 @pytest.fixture
 def test_product(client):
     """Create a test product via API and return response."""
+    import time
     product_data = {
-        "name": "API Test Coffee",
+        "name": f"API Test Coffee {int(time.time()*1000)}",
         "price_cents": 150,
         "is_active": True
     }

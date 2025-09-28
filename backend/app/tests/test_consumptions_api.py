@@ -38,8 +38,9 @@ def test_treasurer(client):
 @pytest.fixture
 def test_product(client):
     """Create a test product"""
+    import time
     product_data = {
-        "name": "Coffee",
+        "name": f"Coffee {int(time.time()*1000)}",
         "price_cents": 150,
         "is_active": True
     }
@@ -176,6 +177,7 @@ def test_get_consumption_by_id_not_found(client):
 def test_get_user_recent_consumptions(client, test_user, test_product, test_treasurer, sample_consumption_data):
     """Test getting recent consumptions for a user"""
     # Create multiple consumptions
+    import time
     for i in range(3):
         consumption_data = sample_consumption_data.copy()
         consumption_data["qty"] = i + 1
@@ -183,6 +185,8 @@ def test_get_user_recent_consumptions(client, test_user, test_product, test_trea
             f"/consumptions/?creator_id={test_treasurer['id']}", 
             json=consumption_data
         )
+        # Ensure distinct timestamps for deterministic ordering
+        time.sleep(0.002)
     
     response = client.get(f"/consumptions/user/{test_user['id']}/recent?limit=2")
     assert response.status_code == 200

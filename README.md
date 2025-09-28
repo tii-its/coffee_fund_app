@@ -40,6 +40,7 @@ A team coffee fund management application with consumption tracking and cash mov
 - `make lint` - Run linting
 - `make migrate` - Run database migrations
 - `make clean` - Clean up containers and volumes
+- `reset-treasurer-pin` Reset treasurer PIN to 1234
 
 ## Tech Stack
 

@@ -66,7 +66,7 @@ def test_delete_user_with_valid_pin(client, sample_user_data):
     user_id = create_response.json()["id"]
     
     # Delete with valid PIN
-    response = client.delete(f"/users/{user_id}", json={"pin": settings.treasurer_pin})
+    response = client.request("DELETE", f"/users/{user_id}", json={"pin": settings.treasurer_pin})
     assert response.status_code == 200
     assert response.json()["message"] == "User deleted successfully"
     
@@ -86,7 +86,7 @@ def test_delete_user_with_invalid_pin(client, sample_user_data):
     user_id = create_response.json()["id"]
     
     # Try to delete with invalid PIN
-    response = client.delete(f"/users/{user_id}", json={"pin": "wrong-pin"})
+    response = client.request("DELETE", f"/users/{user_id}", json={"pin": "wrong-pin"})
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid PIN"
 

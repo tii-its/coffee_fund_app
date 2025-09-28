@@ -2,18 +2,18 @@
 Integration tests for complete business workflows
 """
 import pytest
-from app.services.balance import BalanceService
-from app.db.session import get_db
-from app.tests.conftest import override_get_db
 import uuid
 
 
 @pytest.fixture
 def setup_users_and_product(client):
     """Set up basic test data: users and product"""
+    import time
+    ts = int(time.time()*1000)
     # Create regular user
     user_data = {
         "display_name": "Coffee Consumer",
+        "email": f"workflow.user.{ts}@example.com",
         "role": "user",
         "is_active": True
     }
@@ -23,6 +23,7 @@ def setup_users_and_product(client):
     # Create two treasurers for two-person approval
     treasurer1_data = {
         "display_name": "Treasurer One",
+        "email": f"workflow.treas1.{ts}@example.com",
         "role": "treasurer",
         "is_active": True
     }
@@ -31,6 +32,7 @@ def setup_users_and_product(client):
     
     treasurer2_data = {
         "display_name": "Treasurer Two", 
+        "email": f"workflow.treas2.{ts}@example.com",
         "role": "treasurer",
         "is_active": True
     }
@@ -39,7 +41,8 @@ def setup_users_and_product(client):
     
     # Create product
     product_data = {
-        "name": "Premium Coffee",
+        # Unique product name per test run to avoid duplicate name constraint collisions
+        "name": f"Premium Coffee {ts}",
         "price_cents": 200,
         "is_active": True
     }
@@ -88,12 +91,10 @@ def test_complete_deposit_workflow(client, setup_users_and_product):
     assert money_move["confirmed_at"] is None
     
     # Step 3: Check that balance hasn't changed yet (pending deposits don't count)
-    db = next(override_get_db())
-    try:
-        balance_after_create = BalanceService.get_user_balance(db, user["id"])
-        assert balance_after_create == 0  # Still zero
-    finally:
-        db.close()
+    # Use public API balance endpoint for consistency (avoids direct session mismatches)
+    balance_after_create_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_after_create_resp.status_code == 200
+    assert balance_after_create_resp.json()["balance_cents"] == 0
     
     # Step 4: Check pending money moves
     pending_response = client.get("/money-moves/pending")
@@ -115,12 +116,9 @@ def test_complete_deposit_workflow(client, setup_users_and_product):
     assert confirmed_move["confirmed_at"] is not None
     
     # Step 6: Check that balance has now updated
-    db = next(override_get_db())
-    try:
-        final_balance = BalanceService.get_user_balance(db, user["id"])
-        assert final_balance == 2000  # 20 euros
-    finally:
-        db.close()
+    balance_after_confirm_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_after_confirm_resp.status_code == 200
+    assert balance_after_confirm_resp.json()["balance_cents"] == 2000
     
     # Step 7: Check no more pending moves
     pending_response = client.get("/money-moves/pending")
@@ -170,12 +168,9 @@ def test_deposit_rejection_workflow(client, setup_users_and_product):
     assert rejected_move["confirmed_by"] == treasurer2["id"]
     
     # Balance should still be 0
-    db = next(override_get_db())
-    try:
-        balance = BalanceService.get_user_balance(db, user["id"])
-        assert balance == 0
-    finally:
-        db.close()
+    balance_after_reject_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_after_reject_resp.status_code == 200
+    assert balance_after_reject_resp.json()["balance_cents"] == 0
 
 
 def test_consumption_workflow(client, setup_users_and_product):
@@ -206,12 +201,9 @@ def test_consumption_workflow(client, setup_users_and_product):
     )
     
     # Verify balance
-    db = next(override_get_db())
-    try:
-        balance_after_deposit = BalanceService.get_user_balance(db, user["id"])
-        assert balance_after_deposit == 1000
-    finally:
-        db.close()
+    balance_after_deposit_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_after_deposit_resp.status_code == 200
+    assert balance_after_deposit_resp.json()["balance_cents"] == 1000
     
     # Step 2: User consumes coffee
     consumption_data = {
@@ -233,12 +225,9 @@ def test_consumption_workflow(client, setup_users_and_product):
     assert consumption["amount_cents"] == 600  # 3 * 200
     
     # Step 3: Check updated balance
-    db = next(override_get_db())
-    try:
-        balance_after_consumption = BalanceService.get_user_balance(db, user["id"])
-        assert balance_after_consumption == 400  # 1000 - 600
-    finally:
-        db.close()
+    balance_after_consumption_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_after_consumption_resp.status_code == 200
+    assert balance_after_consumption_resp.json()["balance_cents"] == 400
     
     # Step 4: Check consumption history
     user_consumptions_response = client.get(f"/consumptions/user/{user['id']}/recent")
@@ -301,23 +290,17 @@ def test_multiple_consumptions_and_balance_tracking(client, setup_users_and_prod
         total_spent += session["expected_cost"]
         
         # Check balance after each consumption
-        db = next(override_get_db())
-        try:
-            current_balance = BalanceService.get_user_balance(db, user["id"])
-            expected_balance = 2000 - total_spent
-            assert current_balance == expected_balance
-        finally:
-            db.close()
+        balance_iter_resp = client.get(f"/users/{user['id']}/balance")
+        assert balance_iter_resp.status_code == 200
+        expected_balance = 2000 - total_spent
+        assert balance_iter_resp.json()["balance_cents"] == expected_balance
     
     # Final verification
     assert total_spent == 1200  # Total: 400 + 200 + 600
     
-    db = next(override_get_db())
-    try:
-        final_balance = BalanceService.get_user_balance(db, user["id"])
-        assert final_balance == 800  # 2000 - 1200
-    finally:
-        db.close()
+    final_balance_resp = client.get(f"/users/{user['id']}/balance")
+    assert final_balance_resp.status_code == 200
+    assert final_balance_resp.json()["balance_cents"] == 800
     
     # Check consumption history
     all_consumptions_response = client.get(f"/consumptions/?user_id={user['id']}")
@@ -360,12 +343,9 @@ def test_payout_workflow(client, setup_users_and_product):
     )
     
     # Balance should be 1100 cents now
-    db = next(override_get_db())
-    try:
-        balance_before_payout = BalanceService.get_user_balance(db, user["id"])
-        assert balance_before_payout == 1100  # 1500 - 400
-    finally:
-        db.close()
+    balance_before_payout_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_before_payout_resp.status_code == 200
+    assert balance_before_payout_resp.json()["balance_cents"] == 1100
     
     # Request payout
     payout_data = {
@@ -382,12 +362,9 @@ def test_payout_workflow(client, setup_users_and_product):
     payout_move = payout_response.json()
     
     # Balance shouldn't change yet (pending)
-    db = next(override_get_db())
-    try:
-        balance_after_request = BalanceService.get_user_balance(db, user["id"])
-        assert balance_after_request == 1100  # Still same
-    finally:
-        db.close()
+    balance_after_request_resp = client.get(f"/users/{user['id']}/balance")
+    assert balance_after_request_resp.status_code == 200
+    assert balance_after_request_resp.json()["balance_cents"] == 1100
     
     # Confirm payout
     confirm_response = client.patch(
@@ -396,12 +373,9 @@ def test_payout_workflow(client, setup_users_and_product):
     assert confirm_response.status_code == 200
     
     # Balance should now be reduced
-    db = next(override_get_db())
-    try:
-        final_balance = BalanceService.get_user_balance(db, user["id"])
-        assert final_balance == 600  # 1100 - 500
-    finally:
-        db.close()
+    final_balance_resp = client.get(f"/users/{user['id']}/balance")
+    assert final_balance_resp.status_code == 200
+    assert final_balance_resp.json()["balance_cents"] == 600
 
 
 def test_self_confirmation_prevention(client, setup_users_and_product):

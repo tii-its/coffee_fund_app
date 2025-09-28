@@ -36,13 +36,17 @@ def create_consumption(
     amount_cents = unit_price_cents * consumption.qty
     
     # Create consumption
+    # Explicitly set timestamp in Python to gain higher resolution than some
+    # SQLite func.now() implementations (improves deterministic ordering in tests)
+    from datetime import datetime, timezone
     db_consumption = Consumption(
         user_id=consumption.user_id,
         product_id=consumption.product_id,
         qty=consumption.qty,
         unit_price_cents=unit_price_cents,
         amount_cents=amount_cents,
-        created_by=creator_id
+        created_by=creator_id,
+        at=datetime.now(timezone.utc)
     )
     
     db.add(db_consumption)
@@ -107,7 +111,8 @@ def get_user_recent_consumptions(
     consumptions = (
         db.query(Consumption)
         .filter(Consumption.user_id == user_id)
-        .order_by(Consumption.at.desc())
+        # Order by timestamp desc, then by id desc to break same-timestamp ties
+        .order_by(Consumption.at.desc(), Consumption.id.desc())
         .limit(limit)
         .all()
     )
