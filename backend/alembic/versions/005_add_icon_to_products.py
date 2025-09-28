@@ -1,16 +1,17 @@
 """add_icon_to_products
 
-Revision ID: 004
-Revises: 002_add_stock_purchases
+Revision ID: 005
+Revises: 004
 Create Date: 2024-01-15 10:00:00.000000
 
+NOTE: Renumbered from 004 to 005 during duplicate revision normalization.
 """
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers
-revision = '004'
-down_revision = '003'
+revision = '005'
+down_revision = '004'
 branch_labels = None
 depends_on = None
 

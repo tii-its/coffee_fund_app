@@ -201,7 +201,11 @@ Makefile
 - **Centralized Setup**: Use fixtures from `conftest.py` for consistent database state
 - **Integration Tests**: Test complete workflows in `test_integration_workflows.py`
 - **Database Isolation**: Each test gets fresh database state via pytest fixtures
-
+- Run tests with Makefile/container:  
+  ```bash
+  make test-backend
+  make test-frontend
+  ```
 ---
 
 ## Acceptance Criteria

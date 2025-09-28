@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 
-from app.db.base import Base
+from app.db.session import Base
 
 
 class SystemSettings(Base):

@@ -12,9 +12,7 @@ class User(Base):
 
     id = Column(UUID(), primary_key=True, default=_uuid.uuid4)
     display_name = Column(String(255), nullable=False, index=True)
-    # Provide a Python-side default to ensure tests or direct model creations without an explicit
-    # email don't violate NOT NULL/UNIQUE constraints. Uses example.com to satisfy EmailStr.
-    email = Column(String(255), nullable=False, index=True, unique=True, default=lambda: f"placeholder+{_uuid.uuid4().hex}@example.com")
+    email = Column(String(255), nullable=False, index=True, unique=True)
     qr_code = Column(String(255), nullable=True, index=True)
     role = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

@@ -4,16 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { productsApi } from '@/api/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useAppStore } from '@/store'
-import { ProductModal } from '@/components/ProductModal'
+import { ProductModal, type ProductFormData } from '@/components/ProductModal'
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
 import type { Product, ProductCreate, ProductUpdate } from '@/api/types'
-
-type ProductFormData = {
-  name: string
-  price_cents: number
-  icon?: string
-  is_active: boolean
-}
+// Reuse ProductFormData exported by ProductModal (icon may be string | null)
 
 const Products: React.FC = () => {
   const { t } = useTranslation()

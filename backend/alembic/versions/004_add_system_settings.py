@@ -1,9 +1,10 @@
 """Add system_settings table for PIN storage
 
 Revision ID: 004
-Revises: 003_normalize_emails
+Revises: 003
 Create Date: 2024-09-27 20:00:00.000000
 
+NOTE: Normalized during duplicate 004 cleanup.
 """
 from alembic import op
 import sqlalchemy as sa

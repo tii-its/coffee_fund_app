@@ -12,7 +12,7 @@ const productSchema = z.object({
   is_active: z.boolean().optional().default(true),
 })
 
-type ProductFormData = z.infer<typeof productSchema>
+export type ProductFormData = z.infer<typeof productSchema>
 
 interface ProductModalProps {
   isOpen: boolean

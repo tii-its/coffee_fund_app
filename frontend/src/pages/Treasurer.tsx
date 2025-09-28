@@ -6,7 +6,7 @@ import { useAppStore } from '@/store'
 import { formatCurrency, formatDate, downloadBlob } from '@/lib/utils'
 import StockPurchaseForm from '@/components/StockPurchaseForm'
 import PinChangeModal from '@/components/PinChangeModal'
-import type { StockPurchaseCreate } from '@/api/types'
+import type { StockPurchaseCreate, UserBalance, MoneyMove, StockPurchase } from '@/api/types'
 
 const Treasurer: React.FC = () => {
   const { t } = useTranslation()
@@ -17,19 +17,19 @@ const Treasurer: React.FC = () => {
   const [showPinChangeModal, setShowPinChangeModal] = useState(false)
 
   // Fetch all user balances
-  const { data: balances = [] } = useQuery({
+  const { data: balances = [] } = useQuery<UserBalance[]>({
     queryKey: ['allBalances'],
     queryFn: () => usersApi.getAllBalances().then((res) => res.data),
   })
 
   // Fetch pending money moves
-  const { data: pendingMoves = [] } = useQuery({
+  const { data: pendingMoves = [] } = useQuery<MoneyMove[]>({
     queryKey: ['pendingMoves'],
     queryFn: () => moneyMovesApi.getPending().then((res) => res.data),
   })
 
   // Fetch stock purchases
-  const { data: stockPurchases = [] } = useQuery({
+  const { data: stockPurchases = [] } = useQuery<StockPurchase[]>({
     queryKey: ['stockPurchases'],
     queryFn: () => stockPurchasesApi.getAll().then((res) => res.data),
   })
@@ -69,11 +69,11 @@ const Treasurer: React.FC = () => {
   })
 
   // Users below threshold
-  const belowThreshold = balances.filter(balance => balance.balance_cents < 1000)
+  const belowThreshold = balances.filter((balance: UserBalance) => balance.balance_cents < 1000)
   
   // Stock purchases pending cash out
-  const pendingCashOut = stockPurchases.filter(sp => !sp.is_cash_out_processed)
-  const totalPendingCashOut = pendingCashOut.reduce((sum, sp) => sum + sp.total_amount_cents, 0)
+  const pendingCashOut = stockPurchases.filter((sp: StockPurchase) => !sp.is_cash_out_processed)
+  const totalPendingCashOut = pendingCashOut.reduce((sum: number, sp: StockPurchase) => sum + sp.total_amount_cents, 0)
 
   const handleExport = async (type: 'consumptions' | 'moneyMoves' | 'balances') => {
     try {
@@ -124,10 +124,16 @@ const Treasurer: React.FC = () => {
   const handleStockPurchaseSubmit = async (stockPurchase: StockPurchaseCreate) => {
     await createStockPurchaseMutation.mutateAsync(stockPurchase)
   }
-    if (window.confirm(t('stock.cashOutConfirmation', { 
-      item: stockPurchases.find(sp => sp.id === id)?.item_name 
-    }))) {
-      await processCashOutMutation.mutateAsync(id)
+  
+  const handleCashOut = async (id: string) => {
+  const purchase = stockPurchases.find((sp: StockPurchase) => sp.id === id)
+    if (!purchase) return
+    if (window.confirm(t('stock.cashOutConfirmation', { item: purchase.item_name }))) {
+      try {
+        await processCashOutMutation.mutateAsync(id)
+      } catch (err) {
+        console.error('Failed to process cash out', err)
+      }
     }
   }
 

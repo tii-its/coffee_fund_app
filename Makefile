@@ -4,6 +4,9 @@
 dev:
 	docker compose -f infra/docker-compose.dev.yml up --build
 
+dev-bg:
+	docker compose -f infra/docker-compose.dev.yml up -d --build
+
 dev-down:
 	docker compose -f infra/docker-compose.dev.yml down
 
@@ -41,7 +44,12 @@ test-backend:
 	docker compose -f infra/docker-compose.dev.yml down
 
 test-frontend:
+	docker compose -f infra/docker-compose.dev.yml up -d --build
 	docker compose -f infra/docker-compose.dev.yml exec frontend npm test
+	docker compose -f infra/docker-compose.dev.yml down
+
+test-frontend-typecheck:
+	docker compose -f infra/docker-compose.dev.yml exec frontend npm run typecheck
 
 test-e2e:
 	docker compose -f infra/docker-compose.dev.yml exec frontend npm run test:e2e
@@ -78,7 +86,18 @@ shell-backend:
 	docker compose -f infra/docker-compose.dev.yml exec backend bash
 
 shell-frontend:
-	docker compose -f infra/docker-compose.dev.yml exec frontend bash
+	# Use bash if present, otherwise fall back to sh (Alpine images often lack bash)
+	docker compose -f infra/docker-compose.dev.yml exec frontend sh -c 'if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi'
 
 shell-db:
 	docker compose -f infra/docker-compose.dev.yml exec db psql -U coffee -d coffee
+
+# Treasurer PIN reset
+reset-treasurer-pin:
+	# Usage: make reset-treasurer-pin [pin=9876]
+	# If pin not provided, defaults to TREASURER_PIN env or 1234
+	@if [ -z "$$pin" ]; then \
+		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_treasurer_pin ; \
+	else \
+		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_treasurer_pin $$pin ; \
+	fi
