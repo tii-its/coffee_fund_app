@@ -5,6 +5,7 @@ import { usersApi, moneyMovesApi, exportsApi, stockPurchasesApi } from '@/api/cl
 import { useAppStore } from '@/store'
 import { formatCurrency, formatDate, downloadBlob } from '@/lib/utils'
 import StockPurchaseForm from '@/components/StockPurchaseForm'
+import PinChangeModal from '@/components/PinChangeModal'
 import type { StockPurchaseCreate } from '@/api/types'
 
 const Treasurer: React.FC = () => {
@@ -13,6 +14,7 @@ const Treasurer: React.FC = () => {
   const { currentUser } = useAppStore()
   
   const [showStockForm, setShowStockForm] = useState(false)
+  const [showPinChangeModal, setShowPinChangeModal] = useState(false)
 
   // Fetch all user balances
   const { data: balances = [] } = useQuery({
@@ -32,7 +34,23 @@ const Treasurer: React.FC = () => {
     queryFn: () => stockPurchasesApi.getAll().then((res) => res.data),
   })
 
-  // Stock purchase mutations
+  // Money move mutations
+  const confirmMoneyMoveMutation = useMutation({
+    mutationFn: ({ id, confirmer_id }: { id: string; confirmer_id: string }) =>
+      moneyMovesApi.confirm(id, confirmer_id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
+      queryClient.invalidateQueries({ queryKey: ['allBalances'] })
+    },
+  })
+
+  const rejectMoneyMoveMutation = useMutation({
+    mutationFn: ({ id, rejector_id }: { id: string; rejector_id: string }) =>
+      moneyMovesApi.reject(id, rejector_id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
+    },
+  })
   const createStockPurchaseMutation = useMutation({
     mutationFn: (stockPurchase: StockPurchaseCreate) => 
       stockPurchasesApi.create(stockPurchase, currentUser?.id || ''),
@@ -83,11 +101,29 @@ const Treasurer: React.FC = () => {
     }
   }
 
+  const handleConfirmMoneyMove = async (moveId: string) => {
+    if (!currentUser?.id) return
+    try {
+      await confirmMoneyMoveMutation.mutateAsync({ id: moveId, confirmer_id: currentUser.id })
+    } catch (error) {
+      console.error('Failed to confirm money move:', error)
+    }
+  }
+
+  const handleRejectMoneyMove = async (moveId: string) => {
+    if (!currentUser?.id) return
+    if (window.confirm(t('moneyMove.confirmReject'))) {
+      try {
+        await rejectMoneyMoveMutation.mutateAsync({ id: moveId, rejector_id: currentUser.id })
+      } catch (error) {
+        console.error('Failed to reject money move:', error)
+      }
+    }
+  }
+
   const handleStockPurchaseSubmit = async (stockPurchase: StockPurchaseCreate) => {
     await createStockPurchaseMutation.mutateAsync(stockPurchase)
   }
-
-  const handleCashOut = async (id: string) => {
     if (window.confirm(t('stock.cashOutConfirmation', { 
       item: stockPurchases.find(sp => sp.id === id)?.item_name 
     }))) {
@@ -125,6 +161,19 @@ const Treasurer: React.FC = () => {
           <h3 className="text-lg font-semibold mb-2">{t('stock.pendingCashOut')}</h3>
           <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPendingCashOut)}</p>
           <p className="text-sm text-gray-500">{pendingCashOut.length} {t('stock.purchases').toLowerCase()}</p>
+        </div>
+      </div>
+
+      {/* Settings Section */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4">{t('treasurer.settings')}</h3>
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => setShowPinChangeModal(true)}
+            className="btn btn-outline"
+          >
+            🔐 {t('pin.change')}
+          </button>
         </div>
       </div>
 
@@ -204,11 +253,19 @@ const Treasurer: React.FC = () => {
                   )}
                   
                   <div className="flex space-x-2">
-                    <button className="btn btn-success btn-sm flex-1">
-                      {t('common.confirm')}
+                    <button 
+                      onClick={() => handleConfirmMoneyMove(move.id)}
+                      disabled={confirmMoneyMoveMutation.isPending}
+                      className="btn btn-success btn-sm flex-1"
+                    >
+                      {confirmMoneyMoveMutation.isPending ? t('common.loading') : t('common.confirm')}
                     </button>
-                    <button className="btn btn-danger btn-sm flex-1">
-                      {t('common.reject')}
+                    <button 
+                      onClick={() => handleRejectMoneyMove(move.id)}
+                      disabled={rejectMoneyMoveMutation.isPending}
+                      className="btn btn-danger btn-sm flex-1"
+                    >
+                      {rejectMoneyMoveMutation.isPending ? t('common.loading') : t('common.reject')}
                     </button>
                   </div>
                 </div>
@@ -313,6 +370,18 @@ const Treasurer: React.FC = () => {
           onSubmit={handleStockPurchaseSubmit}
           onCancel={() => setShowStockForm(false)}
           isLoading={createStockPurchaseMutation.isPending}
+        />
+      )}
+      
+      {/* PIN Change Modal */}
+      {showPinChangeModal && (
+        <PinChangeModal
+          isOpen={showPinChangeModal}
+          onClose={() => setShowPinChangeModal(false)}
+          onSuccess={() => {
+            // Show success message or refresh data if needed
+            console.log('PIN changed successfully')
+          }}
         />
       )}
     </div>
