@@ -16,7 +16,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products, onSelect }) => {
           onClick={() => onSelect(product)}
           className="card hover:shadow-lg transition-shadow p-6 text-center"
         >
-          <div className="text-4xl mb-2">☕</div>
+          <div className="text-4xl mb-2">{product.icon || '☕'}</div>
           <p className="font-medium text-gray-900 mb-1">{product.name}</p>
           <p className="text-lg font-semibold text-blue-600">
             {formatCurrency(product.price_cents)}

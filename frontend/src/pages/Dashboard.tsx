@@ -1,15 +1,20 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi, consumptionsApi, moneyMovesApi, productsApi } from '@/api/client'
 import { formatCurrency, formatDateShort } from '@/lib/utils'
+import { useAppStore } from '@/store'
 import BalanceCard from '@/components/BalanceCard'
 import UserPicker from '@/components/UserPicker'
-import type { User } from '@/api/types'
+import TopUpBalanceModal from '@/components/TopUpBalanceModal'
+import type { User, MoneyMoveCreate } from '@/api/types'
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const { currentUser } = useAppStore()
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false)
 
   // Fetch all users for selection
   const { data: users = [] } = useQuery({
@@ -50,7 +55,25 @@ const Dashboard: React.FC = () => {
     queryFn: () => usersApi.getAboveThreshold(1000).then((res) => res.data),
   })
 
-  // Fetch all user balances for total balance calculation
+  // Create money move mutation
+  const createMoneyMoveMutation = useMutation({
+    mutationFn: (data: MoneyMoveCreate) =>
+      moneyMovesApi.create(data, currentUser?.id || ''),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
+      queryClient.invalidateQueries({ queryKey: ['userBalance'] })
+      setIsTopUpModalOpen(false)
+    },
+  })
+
+  const handleTopUpBalance = async (data: MoneyMoveCreate) => {
+    try {
+      await createMoneyMoveMutation.mutateAsync(data)
+    } catch (error) {
+      console.error('Failed to create money move:', error)
+      throw error
+    }
+  }
   const { data: allBalances = [] } = useQuery({
     queryKey: ['allBalances'],
     queryFn: () => usersApi.getAllBalances().then((res) => res.data),
@@ -226,8 +249,18 @@ const Dashboard: React.FC = () => {
 
       {/* Balance Card */}
       {userBalance && (
-        <div className="mb-6">
-          <BalanceCard balance={userBalance} />
+        <div className="mb-6 flex items-center gap-4">
+          <div className="flex-1">
+            <BalanceCard balance={userBalance} />
+          </div>
+          {currentUser?.role === 'treasurer' && (
+            <button
+              onClick={() => setIsTopUpModalOpen(true)}
+              className="btn btn-success px-4 py-2"
+            >
+              {t('moneyMove.topUpBalance')}
+            </button>
+          )}
         </div>
       )}
 
@@ -295,6 +328,15 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Top Up Balance Modal */}
+      <TopUpBalanceModal
+        isOpen={isTopUpModalOpen}
+        onClose={() => setIsTopUpModalOpen(false)}
+        onSubmit={handleTopUpBalance}
+        user={selectedUser}
+        isLoading={createMoneyMoveMutation.isPending}
+      />
     </div>
   )
 }

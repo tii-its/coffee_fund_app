@@ -7,6 +7,7 @@ from uuid import UUID
 class ProductBase(BaseModel):
     name: str
     price_cents: int
+    icon: Optional[str] = '☕'
     is_active: bool = True
 
 
@@ -17,6 +18,7 @@ class ProductCreate(ProductBase):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     price_cents: Optional[int] = None
+    icon: Optional[str] = None
     is_active: Optional[bool] = None
 
 
