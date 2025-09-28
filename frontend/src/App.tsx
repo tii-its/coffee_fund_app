@@ -9,6 +9,7 @@ import Kiosk from '@/pages/Kiosk'
 import Treasurer from '@/pages/Treasurer'
 import Users from '@/pages/Users'
 import Products from '@/pages/Products'
+import TreasurerRoute from '@/components/TreasurerRoute'
 
 function App() {
   const { i18n } = useTranslation()
