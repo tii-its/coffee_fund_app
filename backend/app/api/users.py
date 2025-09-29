@@ -7,11 +7,12 @@ from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models import User
-from app.schemas import UserBalance, UserCreate, UserResponse, UserUpdate
+from app.schemas import UserBalance, UserCreate, UserResponse, UserUpdate, UserPinVerificationRequest, UserPinChangeRequest
 from app.services.audit import AuditService
 from app.services.balance import BalanceService
 from app.services.qr_code import QRCodeService
 from app.services.pin import PinService
+from app.services.user_pin import UserPinService
 from app.core.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -31,7 +32,7 @@ def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
     creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user"),
-    pin: str = Body(..., description="Admin PIN for privileged user creation", embed=True)
+    admin_pin: str = Body(..., description="Admin PIN for privileged user creation", embed=True)
 ):
     """Create a new user (admin PIN required)."""
     # Email must be provided and unique
@@ -40,12 +41,13 @@ def create_user(
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
     # Verify admin PIN (global) always for user creation
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+    if not PinService.verify_pin(admin_pin, db=db):
+        raise HTTPException(status_code=403, detail="Invalid admin PIN")
     
-    # Create new user (exclude PIN from database)
+    # Create new user with PIN hash
     user_data = user.model_dump(exclude={'pin'})
     db_user = User(**user_data)
+    db_user.pin_hash = UserPinService.hash_pin(user.pin)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -95,12 +97,12 @@ def update_user(
     user_update: UserUpdate,
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update"),
-    pin: str = Body(..., description="Admin PIN for privileged update", embed=True)
+    admin_pin: str = Body(..., description="Admin PIN for privileged update", embed=True)
 ):
     """Update a user (requires admin PIN)."""
     # Verify admin PIN
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+    if not PinService.verify_pin(admin_pin, db=db):
+        raise HTTPException(status_code=403, detail="Invalid admin PIN")
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -133,12 +135,12 @@ def delete_user(
     user_id: UUID,
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user performing the deletion"),
-    pin: str = Body(..., description="Admin PIN for privileged deletion", embed=True)
+    admin_pin: str = Body(..., description="Admin PIN for privileged deletion", embed=True)
 ):
     """Delete (soft) a user (requires admin PIN)."""
     # Verify admin PIN
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+    if not PinService.verify_pin(admin_pin, db=db):
+        raise HTTPException(status_code=403, detail="Invalid admin PIN")
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -164,16 +166,46 @@ def delete_user(
 
 
 @router.post("/verify-pin")
-def verify_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
+def verify_admin_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
     """Verify admin PIN."""
     if not PinService.verify_pin(pin_request.pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+        raise HTTPException(status_code=403, detail="Invalid admin PIN")
     
-    return {"message": "PIN verified successfully"}
+    return {"message": "Admin PIN verified successfully"}
+
+
+@router.post("/verify-user-pin")
+def verify_user_pin(pin_request: UserPinVerificationRequest, db: Session = Depends(get_db)):
+    """Verify a user's PIN."""
+    if not UserPinService.verify_user_pin(db, pin_request.user_id, pin_request.pin):
+        raise HTTPException(status_code=403, detail="Invalid user PIN")
+    
+    # Get user info to return with verification
+    user = db.query(User).filter(User.id == pin_request.user_id, User.is_active == True).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "message": "User PIN verified successfully",
+        "user": UserResponse.model_validate(user)
+    }
+
+
+@router.post("/change-user-pin")
+def change_user_pin(
+    pin_change: UserPinChangeRequest,
+    db: Session = Depends(get_db),
+    actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
+):
+    """Change a user's PIN (requires current PIN)."""
+    if not UserPinService.change_user_pin(db, pin_change.user_id, pin_change.current_pin, pin_change.new_pin, actor_id):
+        raise HTTPException(status_code=403, detail="Invalid current PIN or user not found")
+    
+    return {"message": "User PIN changed successfully"}
 
 
 @router.post("/change-pin")
-def change_pin(
+def change_admin_pin(
     pin_change: PinChangeRequest,
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
@@ -181,20 +213,20 @@ def change_pin(
     """Change the admin PIN (requires current PIN)."""
     # Use the enhanced PIN service to change the PIN
     if not PinService.change_pin(db, pin_change.current_pin, pin_change.new_pin):
-        raise HTTPException(status_code=403, detail="Invalid current PIN")
+        raise HTTPException(status_code=403, detail="Invalid current admin PIN")
     
     # Log the action for audit purposes
     if actor_id:
         AuditService.log_action(
             db=db,
             actor_id=actor_id,
-            action="change_pin",
+            action="change_admin_pin",
             entity="system",
             entity_id=str(actor_id),
-            meta_data={"operation": "pin_change"}
+            meta_data={"operation": "admin_pin_change"}
         )
     
-    return {"message": "PIN changed successfully"}
+    return {"message": "Admin PIN changed successfully"}
 
 
 @router.get("/{user_id}/balance", response_model=UserBalance)
