@@ -19,7 +19,8 @@ export interface UserCreate {
   qr_code?: string | null
   role: 'user' | 'treasurer'
   is_active?: boolean
-  pin?: string  // Required for treasurer role
+  // Per-user PIN removed; global Admin PIN governs privileged operations
+  pin?: string
 }
 
 export interface UserUpdate {

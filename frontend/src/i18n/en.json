@@ -134,7 +134,7 @@
     "required": "PIN is required",
     "invalid": "Invalid PIN",
     "verification": "PIN Verification Required",
-    "description": "Please enter the treasurer PIN to continue.",
+  "description": "Please enter the Admin PIN to continue.",
     "change": "Change PIN",
     "currentPin": "Current PIN",
     "newPin": "New PIN",
@@ -146,18 +146,18 @@
     "tooShort": "PIN must be at least 4 characters",
     "changeSuccess": "PIN changed successfully",
     "changeError": "Failed to change PIN",
-    "treasurerPin": "Treasurer PIN",
-    "treasurerPinHelp": "A PIN is required to create users with treasurer role",
-    "requiredForTreasurer": "PIN is required for treasurer role",
-    "treasurerAccess": "Treasurer Access",
-    "treasurerAccessDescription": "Please enter the treasurer PIN to access product management."
+  "treasurerPin": "Admin PIN",
+  "treasurerPinHelp": "The global Admin PIN is required for privileged maintenance actions (user management).",
+  "requiredForTreasurer": "Admin PIN required for privileged actions",
+  "treasurerAccess": "Admin Access",
+  "treasurerAccessDescription": "Please enter the Admin PIN to access product management."
   },
   "auth": {
     "restricted": "Restricted Area",
-    "treasurerOnly": "This area is restricted to treasurers only",
-    "enterPin": "Enter PIN",
-    "treasurerAccess": "Treasurer Access",
-    "enterTreasurerPin": "Please enter the treasurer PIN to access this area"
+  "treasurerOnly": "This area requires Admin PIN authorization",
+  "enterPin": "Enter PIN",
+  "treasurerAccess": "Admin Access",
+  "enterTreasurerPin": "Please enter the Admin PIN to access this area"
   },
   "stock": {
     "title": "Stock Management",
@@ -170,15 +170,14 @@
     "totalAmount": "Total Amount",
     "purchaseDate": "Purchase Date",
     "receiptNumber": "Receipt Number",
-    "cashOutProcessed": "Cash Out Processed",
-    "pendingCashOut": "Pending Cash Out",
+  "pendingCashOut": "Pending Cash Out",
     "processCashOut": "Process Cash Out",
     "confirmCashOut": "Confirm Cash Out",
     "cashOutConfirmation": "Are you sure you want to process cash out for '{{item}}'?",
     "noPurchases": "No stock purchases recorded yet.",
     "purchaseAdded": "Stock purchase added successfully",
-    "purchaseUpdated": "Stock purchase updated successfully",
-    "cashOutProcessed": "Cash out processed successfully",
+  "purchaseUpdated": "Stock purchase updated successfully",
+  "cashOutProcessed": "Cash out processed successfully",
     "purchaseDeleted": "Stock purchase deleted successfully"
   },
   "errors": {
