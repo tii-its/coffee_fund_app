@@ -8,7 +8,7 @@ A team coffee fund management application with consumption tracking and cash mov
 - Manage cash deposits and payouts with two-person confirmation
 - Multi-user concurrent support (kiosk, desktop, mobile)
 - Internationalization support (German/English)
-- Role-based access (User/Treasurer)
+- Role-based access (User/Treasurer) with a separate global Admin PIN (not a user account) for privileged actions
 - Audit logging for all actions
 
 ## Quick Start
@@ -40,7 +40,7 @@ A team coffee fund management application with consumption tracking and cash mov
 - `make lint` - Run linting
 - `make migrate` - Run database migrations
 - `make clean` - Clean up containers and volumes
-- `reset-treasurer-pin` Reset treasurer PIN to 1234
+- `make admin-pin-reset PIN=9999` - Set or reset the global admin PIN (replaces deprecated treasurer pin)
 
 ## Tech Stack
 

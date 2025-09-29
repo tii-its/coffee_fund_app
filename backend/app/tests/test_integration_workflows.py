@@ -2,6 +2,7 @@
 Integration tests for complete business workflows
 """
 import pytest
+from app.core.config import settings
 import uuid
 
 
@@ -17,7 +18,7 @@ def setup_users_and_product(client):
         "role": "user",
         "is_active": True
     }
-    user_response = client.post("/users/", json=user_data)
+    user_response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
     user = user_response.json()
     
     # Create two treasurers for two-person approval
@@ -27,7 +28,7 @@ def setup_users_and_product(client):
         "role": "treasurer",
         "is_active": True
     }
-    treasurer1_response = client.post("/users/", json=treasurer1_data)
+    treasurer1_response = client.post("/users/", json={"user": treasurer1_data, "pin": settings.admin_pin})
     treasurer1 = treasurer1_response.json()
     
     treasurer2_data = {
@@ -36,7 +37,7 @@ def setup_users_and_product(client):
         "role": "treasurer",
         "is_active": True
     }
-    treasurer2_response = client.post("/users/", json=treasurer2_data)
+    treasurer2_response = client.post("/users/", json={"user": treasurer2_data, "pin": settings.admin_pin})
     treasurer2 = treasurer2_response.json()
     
     # Create product

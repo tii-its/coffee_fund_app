@@ -30,18 +30,18 @@ class PinChangeRequest(BaseModel):
 def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
-    creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user")
+    creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user"),
+    pin: str = Body(..., description="Admin PIN for privileged user creation", embed=True)
 ):
-    """Create a new user"""
+    """Create a new user (admin PIN required)."""
     # Email must be provided and unique
     existing_email = db.query(User).filter(User.email == user.email).first()
     if existing_email:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
-    # If creating a treasurer and a PIN was provided, verify it. If no PIN provided, allow creation
-    if user.role == UserRole.TREASURER and user.pin:
-        if not PinService.verify_pin(user.pin, db=db):
-            raise HTTPException(status_code=403, detail="Invalid PIN for treasurer creation")
+    # Verify admin PIN (global) always for user creation
+    if not PinService.verify_pin(pin, db=db):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
     
     # Create new user (exclude PIN from database)
     user_data = user.model_dump(exclude={'pin'})
@@ -95,10 +95,10 @@ def update_user(
     user_update: UserUpdate,
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update"),
-    pin: str = Body(..., description="PIN for treasurer verification", embed=True)
+    pin: str = Body(..., description="Admin PIN for privileged update", embed=True)
 ):
-    """Update a user (requires PIN verification)"""
-    # Verify PIN for treasurer operations
+    """Update a user (requires admin PIN)."""
+    # Verify admin PIN
     if not PinService.verify_pin(pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
@@ -133,10 +133,10 @@ def delete_user(
     user_id: UUID,
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user performing the deletion"),
-    pin: str = Body(..., description="PIN for treasurer verification", embed=True)
+    pin: str = Body(..., description="Admin PIN for privileged deletion", embed=True)
 ):
-    """Delete a user (requires PIN verification)"""
-    # Verify PIN for treasurer operations
+    """Delete (soft) a user (requires admin PIN)."""
+    # Verify admin PIN
     if not PinService.verify_pin(pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
@@ -165,7 +165,7 @@ def delete_user(
 
 @router.post("/verify-pin")
 def verify_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
-    """Verify PIN for treasurer operations"""
+    """Verify admin PIN."""
     if not PinService.verify_pin(pin_request.pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
@@ -178,7 +178,7 @@ def change_pin(
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
 ):
-    """Change the treasurer PIN (requires current PIN)"""
+    """Change the admin PIN (requires current PIN)."""
     # Use the enhanced PIN service to change the PIN
     if not PinService.change_pin(db, pin_change.current_pin, pin_change.new_pin):
         raise HTTPException(status_code=403, detail="Invalid current PIN")

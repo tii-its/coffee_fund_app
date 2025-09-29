@@ -18,9 +18,12 @@ def test_get_settings(client):
     assert "csv_export_limit" in data
 
 
+from app.core.config import settings
+
+
 def test_create_user(client, sample_user_data):
     """Test user creation"""
-    response = client.post("/users/", json=sample_user_data)
+    response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
     assert response.status_code == 201
     data = response.json()
     assert data["display_name"] == sample_user_data["display_name"]
@@ -31,7 +34,7 @@ def test_create_user(client, sample_user_data):
 def test_get_users(client, sample_user_data):
     """Test getting users"""
     # Create a user first
-    client.post("/users/", json=sample_user_data)
+    client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
     
     response = client.get("/users/")
     assert response.status_code == 200

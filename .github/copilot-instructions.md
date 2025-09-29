@@ -6,7 +6,7 @@ This file gives **targeted, actionable guidance** to a GitHub Copilot agent work
 
 ## Big Picture
 - Build a small **Coffee Fund Web App** to track product consumption and cash movements for a team.
-- Roles: **User**, **Treasurer** (Verwalter).
+- Roles: **User**, **Treasurer** (Verwalter). A separate **Admin PIN** (not a user) gates certain privileged maintenance actions (e.g. user CRUD, PIN rotation).
 - All **money movements** (deposits, payouts) use a **two-person confirmation rule** (created by Treasurer, confirmed by User). No SSO in MVP.
 - App must be **usable simultaneously by multiple users** (concurrent sessions on kiosk, desktop, mobile).
 - App must support **German and English** (i18n-ready UI, switchable).
@@ -101,6 +101,7 @@ Makefile
   - `THRESHOLD_CENTS=1000`  # default 10€
   - `CSV_EXPORT_LIMIT=50000`
   - `CORS_ORIGINS=http://localhost:3000,http://localhost:5173`
+  - `ADMIN_PIN=1234` (set a strong value in real deployments; legacy `TREASURER_PIN` env var accepted temporarily as a fallback during deprecation window)
 - **Dev up:** `make dev` (uses docker-compose.dev.yml)
 - **Test:** `make test` (backend + frontend), `make test-backend`, `make test-frontend`
 - **Migrations:** `make migrate` (upgrade), `make migrate-generate msg="description"`
@@ -164,8 +165,8 @@ Makefile
 
 ## Roles
 - **User**: Can access dashboard, kiosk
-- **Treasurer**:  All User rights + access products and treasurer page
-- **Admin**: not a user, just a Admin PIN
+- **Treasurer**: All User rights + access products and treasurer page; initiates & confirms money moves (with two-person rule)
+- **Admin PIN**: A global secret (not a stored user) required for user CRUD, rotating the Admin PIN itself, and other system-level maintenance. Stored as a hashed value in `system_settings` under `admin_pin_hash` (legacy `treasurer_pin_hash` migrated automatically).
 
 ## UI / UX Notes
 - **Kiosk mode**: Fast booking in 2–3 clicks. User → Product → Confirm.
@@ -174,7 +175,7 @@ Makefile
 - **Treasurer dashboard**: Requires Treasurer role. List of all balances, pending confirmations, product mgmt, CSV export, money movement approvals
 - **Dashboard**: Overview of coffee fund balance, Allows selection of user which leads to user dashboard; top 3 coffee consumers, List of users below threshold, 
 - **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN
-**Users page**: Requires ADMIN pin to access. List all users, create new users, edit existing users (change role, deactivate).
+**Users page**: Requires Admin PIN to access. List all users, create new users, edit existing users (change role, deactivate).
 - **Products**: Requrires Treasurer role. List, create, edit, deactivate products.
 
 ---
@@ -190,7 +191,8 @@ Makefile
 - **Balance Logic**: BalanceService calculates: `confirmed_deposits - confirmed_payouts - all_consumptions`
 - **Audit Trail**: Every mutation logged via AuditService with actor_id and structured metadata
 - **Two-Person Rule**: Money moves need creator ≠ confirmer, enforced in API layer
-- **User Creation**: Creating users with admin PIN verification. Email field is optional
+- **User Creation**: Requires Admin PIN verification. Email field is optional
+- **PIN Management**: `reset_admin_pin` script / make target (`make admin-pin-reset PIN=xxxx`) sets or rotates the Admin PIN. Backward compatibility: if only `treasurer_pin_hash` exists it is renamed on first use.
 
 ### Frontend Components
 - **UserCreateModal**: Form-based modal for creating new users
@@ -221,7 +223,8 @@ Makefile
 1. Multiple users can log consumptions simultaneously without data conflicts.  
 2. App UI can switch between German and English.  
 3. User can book a coffee in ≤3 clicks.  
-4. Treasurer can view balances, pending confirmations, export CSV.  
+4. Treasurer dashboard shows balances, pending confirmations; CSV export available.  
 5. Deposits/payouts require confirmation by user before balance changes.  
-6. All actions are logged in `audit` table.
+6. All actions are logged in `audit` table.  
+7. Admin PIN required for user create/update/delete and PIN rotation; legacy treasurer PIN env var accepted only during deprecation window.
 ---

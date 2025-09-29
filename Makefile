@@ -92,12 +92,21 @@ shell-frontend:
 shell-db:
 	docker compose -f infra/docker-compose.dev.yml exec db psql -U coffee -d coffee
 
-# Treasurer PIN reset
-reset-treasurer-pin:
-	# Usage: make reset-treasurer-pin [pin=9876]
-	# If pin not provided, defaults to TREASURER_PIN env or 1234
+# Admin PIN reset (replaces treasurer PIN)
+admin-pin-reset:
+	# Usage: make admin-pin-reset [pin=9876]
+	# If pin not provided, defaults to ADMIN_PIN env or 1234
 	@if [ -z "$$pin" ]; then \
-		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_treasurer_pin ; \
+		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_admin_pin ; \
 	else \
-		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_treasurer_pin $$pin ; \
+		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_admin_pin $$pin ; \
+	fi
+
+# Deprecated legacy target (will be removed after deprecation window)
+reset-treasurer-pin:
+	@echo "[DEPRECATED] Use 'make admin-pin-reset' instead." ; \
+	if [ -z "$$pin" ]; then \
+		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_admin_pin ; \
+	else \
+		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_admin_pin $$pin ; \
 	fi
