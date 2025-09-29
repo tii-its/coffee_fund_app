@@ -1,20 +1,10 @@
 import pytest
 from uuid import uuid4
-from app.core.config import settings
+from app.core.config import settings  # retained for future use if needed
 
 
-def test_verify_pin_success(client):
-    """Test successful PIN verification"""
-    response = client.post("/users/verify-pin", json={"pin": settings.admin_pin})
-    assert response.status_code == 200
-    assert response.json()["message"] == "PIN verified successfully"
-
-
-def test_verify_pin_failure(client):
-    """Test failed treasurer PIN verification"""
-    response = client.post("/users/verify-pin", json={"pin": "wrong-pin"})
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid PIN"
+# Global verify-pin / change-pin endpoints have been removed. Tests below focus solely
+# on per-user PIN behaviors (creation requires PIN, verification, change, auth failures).
 
 
 def test_create_user_with_pin(client):
@@ -52,31 +42,22 @@ def test_create_user_without_pin_fails(client):
     assert response.status_code == 422  # Validation error due to missing required PIN
 
 
-def test_create_treasurer_with_treasurer_pin(client):
-    """Test creating treasurer with valid treasurer PIN"""
+# Treasurer creation now uses its own per-user PIN like any other user.
+def test_create_treasurer(client):
     import time
+    treasurer_pin = "treasurer123"
     user_data = {
         "display_name": "Test Treasurer",
         "email": f"test.treasurer.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
-        "pin": settings.treasurer_pin
+        "pin": treasurer_pin
     }
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
-
-
-def test_create_treasurer_with_invalid_pin_fails(client):
-    """Test creating treasurer with invalid treasurer PIN fails"""
-    import time
-    user_data = {
-        "display_name": "Test Treasurer",
-        "email": f"test.treasurer.invalid.{int(time.time()*1000)}@example.com",
-        "role": "treasurer",
-        "pin": "wrong-treasurer-pin"
-    }
-    response = client.post("/users/", json=user_data)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid treasurer PIN"
+    treasurer_id = response.json()["id"]
+    # Verify treasurer's own PIN works
+    verify = client.post("/users/verify-user-pin", json={"user_id": treasurer_id, "pin": treasurer_pin})
+    assert verify.status_code == 200
 
 
 def test_verify_user_pin_success(client):
@@ -187,96 +168,45 @@ def test_change_user_pin_with_wrong_current_pin(client):
     assert response.json()["detail"] == "Invalid current PIN"
 
 
-def test_update_user_with_valid_pin(client, sample_user_data):
-    """Test user update with valid PIN"""
-    # First create a user
+def test_update_user(client):
     import time
-    sample_user_data = {**sample_user_data, "email": f"pin.valid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
-    # Creation endpoint returns 201 Created
+    create_payload = {
+        "display_name": "Updatable User",
+        "email": f"update.user.{int(time.time()*1000)}@example.com",
+        "role": "user",
+        "pin": "origpin"
+    }
+    create_response = client.post("/users/", json=create_payload)
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
-    
-    # Update with valid PIN
-    update_payload = {
-        "user_update": {"display_name": "Updated Name"},
-        "pin": settings.admin_pin
-    }
+    update_payload = {"user_update": {"display_name": "Updated Name"}}
     response = client.put(f"/users/{user_id}", json=update_payload)
     assert response.status_code == 200
     assert response.json()["display_name"] == "Updated Name"
 
 
-def test_update_user_with_invalid_pin(client, sample_user_data):
-    """Test user update with invalid PIN"""
-    # First create a user
+# Invalid update PIN test removed (no global PIN verification now).
+
+
+def test_delete_user(client):
     import time
-    sample_user_data = {**sample_user_data, "email": f"pin.invalid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
-    assert create_response.status_code == 201
-    user_id = create_response.json()["id"]
-    
-    # Try to update with invalid PIN
-    update_payload = {
-        "user_update": {"display_name": "Updated Name"},
-        "pin": "wrong-pin"
+    payload = {
+        "display_name": "Deletable User",
+        "email": f"delete.user.{int(time.time()*1000)}@example.com",
+        "role": "user",
+        "pin": "delpin"
     }
-    response = client.put(f"/users/{user_id}", json=update_payload)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid PIN"
-
-
-def test_delete_user_with_valid_pin(client, sample_user_data):
-    """Test user deletion with valid PIN"""
-    # First create a user
-    import time
-    sample_user_data = {**sample_user_data, "email": f"pin.delete.valid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
+    create_response = client.post("/users/", json=payload)
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
-    
-    # Delete with valid PIN
-    response = client.request("DELETE", f"/users/{user_id}", json={"pin": settings.admin_pin})
+    response = client.request("DELETE", f"/users/{user_id}")
     assert response.status_code == 200
-    assert response.json()["message"] == "User deleted successfully"
-    
-    # Verify user is marked as inactive (soft delete)
     get_response = client.get(f"/users/{user_id}")
     assert get_response.status_code == 200
     assert get_response.json()["is_active"] is False
 
 
-def test_delete_user_with_invalid_pin(client, sample_user_data):
-    """Test user deletion with invalid PIN"""
-    # First create a user
-    import time
-    sample_user_data = {**sample_user_data, "email": f"pin.delete.invalid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
-    assert create_response.status_code == 201
-    user_id = create_response.json()["id"]
-    
-    # Try to delete with invalid PIN
-    response = client.request("DELETE", f"/users/{user_id}", json={"pin": "wrong-pin"})
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid PIN"
+# Invalid delete PIN test removed.
 
 
-def test_change_pin(client):
-    """Test PIN change functionality"""
-    response = client.post("/users/change-pin", json={
-    "current_pin": settings.admin_pin,
-        "new_pin": "new-pin-123"
-    })
-    assert response.status_code == 200
-    # Implementation returns a direct success message
-    assert "PIN changed successfully" in response.json()["message"]
-
-
-def test_change_pin_with_wrong_current_pin(client):
-    """Test PIN change with wrong current PIN"""
-    response = client.post("/users/change-pin", json={
-        "current_pin": "wrong-pin",
-        "new_pin": "new-pin-123"
-    })
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid current PIN"
+# Global PIN change tests removed (feature deprecated).
