@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
-import { usersApi } from '@/api/client'
-import PinInputModal from './PinInputModal'
+import UserSelectionModal from './UserSelectionModal'
+import type { User } from '@/api/types'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requirePin?: boolean
+  requireUserPin?: boolean
+  requireTreasurerRole?: boolean
   sessionTimeout?: number // in milliseconds, default 1 hour
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requirePin = true,
+  requireUserPin = true,
+  requireTreasurerRole = false,
   sessionTimeout = 60 * 60 * 1000 // 1 hour
 }) => {
   const { t } = useTranslation()
@@ -22,12 +24,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     authTimestamp 
   } = useAppStore()
   
-  const [showPinModal, setShowPinModal] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [showUserSelection, setShowUserSelection] = useState(false)
+  const [authenticatedUser, setAuthenticatedUser] = useState<User | null>(null)
 
   // Check if authentication is still valid
   useEffect(() => {
-    if (!requirePin) return
+    if (!requireUserPin) return
     
     const isAuthValid = treasurerAuthenticated && 
                        authTimestamp && 
@@ -35,40 +37,39 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     
     if (!isAuthValid) {
       setTreasurerAuthenticated(false)
-      setShowPinModal(true)
+      setShowUserSelection(true)
+      setAuthenticatedUser(null)
     }
-  }, [treasurerAuthenticated, authTimestamp, requirePin, sessionTimeout, setTreasurerAuthenticated])
+  }, [treasurerAuthenticated, authTimestamp, requireUserPin, sessionTimeout, setTreasurerAuthenticated])
 
-  // Show PIN modal if not authenticated and PIN is required
+  // Show user selection modal if not authenticated and PIN is required
   useEffect(() => {
-    if (requirePin && !treasurerAuthenticated) {
-      setShowPinModal(true)
+    if (requireUserPin && !treasurerAuthenticated) {
+      setShowUserSelection(true)
     }
-  }, [requirePin, treasurerAuthenticated])
+  }, [requireUserPin, treasurerAuthenticated])
 
-  const handlePinSubmit = async (pin: string) => {
-    setIsLoading(true)
-    try {
-      await usersApi.verifyPin(pin)
-      setTreasurerAuthenticated(true)
-      setShowPinModal(false)
-    } catch (error: any) {
-      throw error // PinInputModal will handle the error display
-    } finally {
-      setIsLoading(false)
+  const handleUserSelected = async (user: User) => {
+    // Check if treasurer role is required
+    if (requireTreasurerRole && user.role !== 'treasurer') {
+      throw new Error(t('auth.treasurerOnly'))
     }
+    
+    setAuthenticatedUser(user)
+    setTreasurerAuthenticated(true)
+    setShowUserSelection(false)
   }
 
   const handleModalClose = () => {
     // Don't allow closing if PIN is required and user is not authenticated
-    if (requirePin && !treasurerAuthenticated) {
+    if (requireUserPin && !treasurerAuthenticated) {
       return
     }
-    setShowPinModal(false)
+    setShowUserSelection(false)
   }
 
   // If PIN is required and user is not authenticated, show nothing until PIN is verified
-  if (requirePin && !treasurerAuthenticated) {
+  if (requireUserPin && !treasurerAuthenticated) {
     return (
       <>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -78,24 +79,23 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               {t('auth.restricted')}
             </h2>
             <p className="text-gray-500 mb-6">
-              {t('auth.treasurerOnly')}
+              {requireTreasurerRole ? t('auth.treasurerOnly') : t('auth.userPinRequired')}
             </p>
             <button 
-              onClick={() => setShowPinModal(true)}
+              onClick={() => setShowUserSelection(true)}
               className="btn btn-primary"
             >
-              {t('auth.enterPin')}
+              {t('auth.selectUser')}
             </button>
           </div>
         </div>
         
-        <PinInputModal
-          isOpen={showPinModal}
+        <UserSelectionModal
+          isOpen={showUserSelection}
           onClose={handleModalClose}
-          onSubmit={handlePinSubmit}
-          isLoading={isLoading}
-          title={t('auth.treasurerAccess')}
-          description={t('auth.enterTreasurerPin')}
+          onUserSelected={handleUserSelected}
+          title={requireTreasurerRole ? t('auth.treasurerAccess') : t('auth.userAccess')}
+          description={requireTreasurerRole ? t('auth.treasurerAccessDescription') : t('auth.userAccessDescription')}
         />
       </>
     )

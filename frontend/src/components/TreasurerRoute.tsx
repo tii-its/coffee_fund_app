@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import PinInputModal from '@/components/PinInputModal'
+import UserSelectionModal from '@/components/UserSelectionModal'
 import { usersApi } from '@/api/client'
+import type { User } from '@/api/types'
 
 interface TreasurerRouteProps {
   children: React.ReactNode
@@ -10,36 +11,33 @@ interface TreasurerRouteProps {
 const TreasurerRoute: React.FC<TreasurerRouteProps> = ({ children }) => {
   const { t } = useTranslation()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [showPinModal, setShowPinModal] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
+  const [showUserSelection, setShowUserSelection] = useState(true)
+  const [authenticatedUser, setAuthenticatedUser] = useState<User | null>(null)
 
-  const handlePinSubmit = async (pin: string) => {
-    setIsLoading(true)
-    try {
-      await usersApi.verifyPin(pin)
-      setIsAuthenticated(true)
-      setShowPinModal(false)
-    } catch (error) {
-      throw error // Let PinInputModal handle the error display
-    } finally {
-      setIsLoading(false)
+  const handleUserSelected = async (user: User) => {
+    // Check if user has treasurer role
+    if (user.role !== 'treasurer') {
+      throw new Error(t('auth.treasurerOnly'))
     }
+    
+    setAuthenticatedUser(user)
+    setIsAuthenticated(true)
+    setShowUserSelection(false)
   }
 
-  const handlePinModalClose = () => {
+  const handleUserSelectionClose = () => {
     // If user closes without authentication, redirect to home
     window.location.href = '/'
   }
 
   if (!isAuthenticated) {
     return (
-      <PinInputModal
-        isOpen={showPinModal}
-        onClose={handlePinModalClose}
-        onSubmit={handlePinSubmit}
-        title={t('pin.treasurerAccess')}
-        description={t('pin.treasurerAccessDescription')}
-        isLoading={isLoading}
+      <UserSelectionModal
+        isOpen={showUserSelection}
+        onClose={handleUserSelectionClose}
+        onUserSelected={handleUserSelected}
+        title={t('auth.treasurerAccess')}
+        description={t('auth.treasurerAccessDescription')}
       />
     )
   }

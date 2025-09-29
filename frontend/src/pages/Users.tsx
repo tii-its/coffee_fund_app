@@ -110,7 +110,7 @@ const Users: React.FC = () => {
           onSubmit={async (pin: string) => {
             try {
               setPinError(null)
-              await usersApi.verifyPin(pin)
+              await usersApi.verifyAdminPin(pin)
               setAdminAuthenticated(true)
               setAdminPin(pin)
             } catch (e: any) {

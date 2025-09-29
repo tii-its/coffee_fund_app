@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi, productsApi, consumptionsApi } from '@/api/client'
 import { formatCurrency } from '@/lib/utils'
-import UserPicker from '@/components/UserPicker'
+import UserSelectionModal from '@/components/UserSelectionModal'
 import ProductGrid from '@/components/ProductGrid'
 import type { User, Product } from '@/api/types'
 
@@ -14,6 +14,7 @@ const Kiosk: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [step, setStep] = useState<'user' | 'product' | 'confirm' | 'complete'>('user')
+  const [isUserSelectionOpen, setIsUserSelectionOpen] = useState(false)
 
   // Fetch users and products
   const { data: users = [] } = useQuery({
@@ -50,8 +51,13 @@ const Kiosk: React.FC = () => {
     },
   })
 
-  const handleUserSelect = (user: User) => {
+  const handleUserSelect = () => {
+    setIsUserSelectionOpen(true)
+  }
+
+  const handleUserSelected = (user: User) => {
     setSelectedUser(user)
+    setIsUserSelectionOpen(false)
     setStep('product')
   }
 
@@ -80,6 +86,7 @@ const Kiosk: React.FC = () => {
     setSelectedProduct(null)
     setQuantity(1)
     setStep('user')
+    setIsUserSelectionOpen(false)
   }
 
   const totalAmount = selectedProduct ? selectedProduct.price_cents * quantity : 0
@@ -120,7 +127,12 @@ const Kiosk: React.FC = () => {
       {step === 'user' && (
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-6">{t('kiosk.selectUser')}</h2>
-          <UserPicker users={users} onSelect={handleUserSelect} />
+          <button
+            onClick={handleUserSelect}
+            className="btn btn-primary btn-lg"
+          >
+            {t('user.selectUser')}
+          </button>
         </div>
       )}
 
@@ -241,6 +253,15 @@ const Kiosk: React.FC = () => {
           <p className="text-gray-600">{t('common.loading')}...</p>
         </div>
       )}
+
+      {/* User Selection Modal */}
+      <UserSelectionModal
+        isOpen={isUserSelectionOpen}
+        onClose={() => setIsUserSelectionOpen(false)}
+        onUserSelected={handleUserSelected}
+        title={t('kiosk.selectUser')}
+        description={t('kiosk.userSelectionDescription')}
+      />
     </div>
   )
 }

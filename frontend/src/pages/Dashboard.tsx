@@ -5,7 +5,7 @@ import { usersApi, consumptionsApi, moneyMovesApi, productsApi } from '@/api/cli
 import { formatCurrency, formatDateShort } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import BalanceCard from '@/components/BalanceCard'
-import UserPicker from '@/components/UserPicker'
+import UserSelectionModal from '@/components/UserSelectionModal'
 import TopUpBalanceModal from '@/components/TopUpBalanceModal'
 import type { User, MoneyMoveCreate } from '@/api/types'
 
@@ -15,6 +15,7 @@ const Dashboard: React.FC = () => {
   const { currentUser } = useAppStore()
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false)
+  const [isUserSelectionOpen, setIsUserSelectionOpen] = useState(false)
 
   // Fetch all users for selection
   const { data: users = [] } = useQuery({
@@ -66,6 +67,15 @@ const Dashboard: React.FC = () => {
     },
   })
 
+  const handleUserSelected = (user: User) => {
+    setSelectedUser(user)
+    setIsUserSelectionOpen(false)
+  }
+
+  const handleSelectUser = () => {
+    setIsUserSelectionOpen(true)
+  }
+
   const handleTopUpBalance = async (data: MoneyMoveCreate) => {
     try {
       await createMoneyMoveMutation.mutateAsync(data)
@@ -101,11 +111,18 @@ const Dashboard: React.FC = () => {
     return (
       <div>
         <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2">{t('kiosk.selectUser')}</h2>
-          <p className="text-gray-600">{t('dashboard.currentBalance')}</p>
+          <h2 className="text-2xl font-bold mb-2">{t('dashboard.title')}</h2>
+          <p className="text-gray-600">{t('dashboard.selectUserDescription')}</p>
         </div>
         
-        <UserPicker users={users} onSelect={setSelectedUser} />
+        <div className="text-center">
+          <button
+            onClick={handleSelectUser}
+            className="btn btn-primary btn-lg"
+          >
+            {t('user.selectUser')}
+          </button>
+        </div>
         
         {/* Overview Cards */}
         <div className="mt-8 space-y-6">
@@ -336,6 +353,15 @@ const Dashboard: React.FC = () => {
         onSubmit={handleTopUpBalance}
         user={selectedUser}
         isLoading={createMoneyMoveMutation.isPending}
+      />
+
+      {/* User Selection Modal */}
+      <UserSelectionModal
+        isOpen={isUserSelectionOpen}
+        onClose={() => setIsUserSelectionOpen(false)}
+        onUserSelected={handleUserSelected}
+        title={t('user.selectUser')}
+        description={t('dashboard.userSelectionDescription')}
       />
     </div>
   )

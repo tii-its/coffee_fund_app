@@ -47,24 +47,33 @@ export const usersApi = {
   getById: (id: string) =>
     api.get<User>(`/users/${id}`),
   
-  create: (user: UserCreate, pin: string, creator_id?: string) =>
-    api.post<User>('/users/', { user, pin }, { params: { creator_id } }),
+  create: (user: UserCreate, admin_pin: string, creator_id?: string) =>
+    api.post<User>('/users/', { user, admin_pin }, { params: { creator_id } }),
   
-  update: (id: string, user: UserUpdate, pin: string, actor_id?: string) =>
-    api.put<User>(`/users/${id}`, { user_update: user, pin }, { params: { actor_id } }),
+  update: (id: string, user: UserUpdate, admin_pin: string, actor_id?: string) =>
+    api.put<User>(`/users/${id}`, { user_update: user, admin_pin }, { params: { actor_id } }),
   
-  delete: (id: string, pin: string, actor_id?: string) =>
+  delete: (id: string, admin_pin: string, actor_id?: string) =>
     api.delete(`/users/${id}`, {
-      data: { pin },
+      data: { admin_pin },
       params: { actor_id }
     }),
   
-  verifyPin: (pin: string) =>
+  verifyAdminPin: (pin: string) =>
     api.post<{ message: string }>('/users/verify-pin', { pin }),
   
-  changePin: (current_pin: string, new_pin: string, actor_id?: string) =>
+  verifyUserPin: (user_id: string, pin: string) =>
+    api.post<{ message: string; user: User }>('/users/verify-user-pin', { user_id, pin }),
+  
+  changeAdminPin: (current_pin: string, new_pin: string, actor_id?: string) =>
     api.post<{ message: string }>('/users/change-pin', 
       { current_pin, new_pin }, 
+      { params: { actor_id } }
+    ),
+  
+  changeUserPin: (user_id: string, current_pin: string, new_pin: string, actor_id?: string) =>
+    api.post<{ message: string }>('/users/change-user-pin', 
+      { user_id, current_pin, new_pin }, 
       { params: { actor_id } }
     ),
   

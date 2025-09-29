@@ -21,6 +21,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
     email: '',
     role: 'user',
     is_active: true,
+    pin: '',
   })
   const [error, setError] = useState('')
 
@@ -34,6 +35,16 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
     
     if (!formData.email.trim()) {
       setError(t('user.emailRequired'))
+      return
+    }
+    
+    if (!formData.pin.trim()) {
+      setError(t('user.pinRequired'))
+      return
+    }
+    
+    if (formData.pin.length < 4) {
+      setError(t('user.pinTooShort'))
       return
     }
     
@@ -53,6 +64,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
         email: '',
         role: 'user',
         is_active: true,
+        pin: '',
       })
       onClose()
     } catch (err: any) {
@@ -67,6 +79,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
       email: '',
       role: 'user',
       is_active: true,
+      pin: '',
     })
     onClose()
   }
@@ -160,7 +173,24 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
               </label>
             </div>
 
-            {/* Per-user PIN removed; global Admin PIN now controls privileged actions */}
+            <div>
+              <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+                {t('user.initialPin')} *
+              </label>
+              <input
+                type="password"
+                id="pin"
+                value={formData.pin}
+                onChange={(e) => handleInputChange('pin', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t('user.pinPlaceholder')}
+                disabled={isLoading}
+                maxLength={10}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {t('user.pinHelpText')}
+              </p>
+            </div>
           </div>
 
           {error && (
@@ -178,7 +208,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !formData.display_name.trim() || !formData.email.trim()}
+              disabled={isLoading || !formData.display_name.trim() || !formData.email.trim() || !formData.pin.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.loading') : t('user.createUser')}
