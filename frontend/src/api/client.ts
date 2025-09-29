@@ -59,15 +59,6 @@ export const usersApi = {
       params: { actor_id }
     }),
   
-  verifyPin: (pin: string) =>
-    api.post<{ message: string }>('/users/verify-pin', { pin }),
-  
-  changePin: (current_pin: string, new_pin: string, actor_id?: string) =>
-    api.post<{ message: string }>('/users/change-pin', 
-      { current_pin, new_pin }, 
-      { params: { actor_id } }
-    ),
-  
   getBalance: (id: string) =>
     api.get<UserBalance>(`/users/${id}/balance`),
   
