@@ -2,7 +2,6 @@ import pytest
 import hashlib
 from uuid import uuid4
 from app.services.pin import PinService
-from app.core.config import settings
 from app.models.users import User
 from app.core.enums import UserRole
 
@@ -16,19 +15,7 @@ class TestPinService:
         expected_hash = hashlib.sha256(pin.encode()).hexdigest()
         assert PinService.hash_pin(pin) == expected_hash
 
-    def test_verify_pin_with_default(self):
-        """Test PIN verification against default admin PIN"""
-        # Should verify against the default admin PIN from settings
-        assert PinService.verify_pin(settings.admin_pin) is True
-        assert PinService.verify_pin("wrong-pin") is False
-
-    def test_verify_pin_with_provided_hash(self):
-        """Test PIN verification with provided hash"""
-        pin = "test123"
-        hashed_pin = PinService.hash_pin(pin)
-        
-        assert PinService.verify_treasurer_pin(pin, hashed_pin) is True
-        assert PinService.verify_treasurer_pin("wrong", hashed_pin) is False
+    # Removed global/default pin verification tests (legacy feature deleted)
 
     def test_verify_user_pin(self, db_session):
         """Test user PIN verification"""
@@ -95,7 +82,4 @@ class TestPinService:
         # Try to change PIN with wrong old PIN
         assert PinService.change_user_pin(user.id, "wrong-old-pin", "another-new-pin", db_session) is False
 
-    def test_get_default_pin_hash(self):
-        """Test getting default PIN hash"""
-        expected = PinService.hash_pin(settings.admin_pin)
-        assert PinService.get_default_pin_hash() == expected
+    # Removed default hash retrieval test (no global PIN concept)

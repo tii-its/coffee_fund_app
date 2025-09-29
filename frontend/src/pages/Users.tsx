@@ -7,8 +7,6 @@ import type { User, UserUpdate, UserCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
 import UserCreateModal from '@/components/UserCreateModal'
-import PinInputModal from '@/components/PinInputModal'
-import { useAppStore } from '@/store'
 // usersApi already imported above
 
 const Users: React.FC = () => {
@@ -17,26 +15,20 @@ const Users: React.FC = () => {
   
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  // future: if delete confirmation modal needed, reintroduce state
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
-  const adminAuthenticated = useAppStore((s: any) => s.adminAuthenticated)
-  const setAdminAuthenticated = useAppStore((s: any) => s.setAdminAuthenticated)
+  // Admin gating removed: treasurer role should gate access (handled by route protection outside this component)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll().then((res: AxiosResponse<User[]>) => res.data),
-    enabled: adminAuthenticated, // only load after admin PIN verification
   })
 
-  const adminPin = useAppStore((s: any) => s.adminPin)
-  const setAdminPin = useAppStore((s: any) => s.setAdminPin)
+  // Removed global adminPin usage
 
   const createUserMutation = useMutation({
-    mutationFn: (userCreate: UserCreate) => {
-      if (!adminPin) throw new Error('Admin PIN missing')
-      return usersApi.create(userCreate, adminPin)
-    },
+    mutationFn: (userCreate: UserCreate) => usersApi.create(userCreate),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setCreateModalOpen(false)
@@ -47,8 +39,8 @@ const Users: React.FC = () => {
   })
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ userId, userUpdate, pin }: { userId: string, userUpdate: UserUpdate, pin: string }) =>
-      usersApi.update(userId, userUpdate, pin),
+    mutationFn: ({ userId, userUpdate }: { userId: string, userUpdate: UserUpdate }) =>
+      usersApi.update(userId, userUpdate),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setEditModalOpen(false)
@@ -60,11 +52,9 @@ const Users: React.FC = () => {
   })
 
   const deleteUserMutation = useMutation({
-    mutationFn: ({ userId, pin }: { userId: string, pin: string }) =>
-      usersApi.delete(userId, pin),
+    mutationFn: ({ userId }: { userId: string }) => usersApi.delete(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setDeleteModalOpen(false)
       setSelectedUser(null)
     },
     onError: (error: any) => {
@@ -82,48 +72,24 @@ const Users: React.FC = () => {
   }
 
   const handleDelete = (user: User) => {
-    setSelectedUser(user)
-    setDeleteModalOpen(true)
+    // simple inline confirm for now
+    if (window.confirm('Delete user?')) {
+      deleteUserMutation.mutate({ userId: user.id })
+    }
   }
 
   const handleCreateSubmit = async (userCreate: UserCreate) => {
     createUserMutation.mutate(userCreate)
   }
 
-  const handleEditSubmit = async (userUpdate: UserUpdate, pin: string) => {
+  const handleEditSubmit = async (userUpdate: UserUpdate, _pin: string) => {
     if (!selectedUser) return
-    updateUserMutation.mutate({ userId: selectedUser.id, userUpdate, pin })
+    updateUserMutation.mutate({ userId: selectedUser.id, userUpdate })
   }
 
-  const handleDeleteSubmit = async (pin: string) => {
-    if (!selectedUser) return
-    deleteUserMutation.mutate({ userId: selectedUser.id, pin })
-  }
+  // delete submit removed (inline confirm approach)
 
-  const [pinError, setPinError] = useState<string | null>(null)
-  if (!adminAuthenticated) {
-    return (
-      <div>
-        <PinInputModal
-          isOpen={true}
-          onClose={() => { /* keep modal open until success */ }}
-          onSubmit={async (pin: string) => {
-            try {
-              setPinError(null)
-              await usersApi.verifyPin(pin)
-              setAdminAuthenticated(true)
-              setAdminPin(pin)
-            } catch (e: any) {
-              const msg = e?.response?.data?.detail || t('pin.invalid')
-              setPinError(msg)
-            }
-          }}
-          title={t('pin.verification')}
-          description={pinError ? pinError : t('pin.description')}
-        />
-      </div>
-    )
-  }
+  // Removed admin PIN gating; page should be protected by treasurer route wrapper.
 
   if (isLoading) {
     return (
@@ -243,17 +209,7 @@ const Users: React.FC = () => {
         isLoading={updateUserMutation.isPending}
       />
 
-      <PinInputModal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false)
-          setSelectedUser(null)
-        }}
-        onSubmit={handleDeleteSubmit}
-        title={t('user.deleteUser')}
-        description={selectedUser ? t('user.deleteConfirmation', { name: selectedUser.display_name }) : ''}
-        isLoading={deleteUserMutation.isPending}
-      />
+  {/* Deletion handled via inline confirm; future enhancement: per-action treasurer PIN */}
     </div>
   )
 }

@@ -19,8 +19,7 @@ export interface UserCreate {
   qr_code?: string | null
   role: 'user' | 'treasurer'
   is_active?: boolean
-  // Per-user PIN removed; global Admin PIN governs privileged operations
-  pin?: string
+  pin: string  // mandatory per-user PIN
 }
 
 export interface UserUpdate {
@@ -29,6 +28,7 @@ export interface UserUpdate {
   qr_code?: string | null
   role?: 'user' | 'treasurer'
   is_active?: boolean
+  pin?: string  // optional new PIN when rotating
 }
 
 export interface Product {

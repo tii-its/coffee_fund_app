@@ -179,7 +179,7 @@ def test_update_user(client):
     create_response = client.post("/users/", json=create_payload)
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
-    update_payload = {"user_update": {"display_name": "Updated Name"}}
+    update_payload = {"display_name": "Updated Name"}
     response = client.put(f"/users/{user_id}", json=update_payload)
     assert response.status_code == 200
     assert response.json()["display_name"] == "Updated Name"

@@ -2,7 +2,6 @@
 Test export API endpoints
 """
 import pytest
-from app.core.config import settings
 import csv
 import io
 from uuid import uuid4
@@ -19,7 +18,7 @@ def test_user(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     return response.json()
 
 
@@ -27,15 +26,14 @@ def test_user(client):
 def test_treasurer(client):
     """Create a test treasurer"""
     import time
-    from app.core.config import settings
     user_data = {
         "display_name": "Test Treasurer", 
         "email": f"test.treasurer.exports.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
         "is_active": True,
-        "pin": settings.treasurer_pin  # Use treasurer PIN for authorization
+        "pin": "treasurerPIN123"
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     return response.json()
 
 
@@ -238,9 +236,10 @@ def test_treasurer2(client):
         "display_name": "Test Treasurer 2", 
         "email": f"test.treasurer2.exports.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasurerPIN456"
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     return response.json()
 
 

@@ -47,17 +47,14 @@ export const usersApi = {
   getById: (id: string) =>
     api.get<User>(`/users/${id}`),
   
-  create: (user: UserCreate, pin: string, creator_id?: string) =>
-    api.post<User>('/users/', { user, pin }, { params: { creator_id } }),
+  create: (user: UserCreate, creator_id?: string) =>
+    api.post<User>('/users/', user, { params: { creator_id } }),
   
-  update: (id: string, user: UserUpdate, pin: string, actor_id?: string) =>
-    api.put<User>(`/users/${id}`, { user_update: user, pin }, { params: { actor_id } }),
+  update: (id: string, user: UserUpdate, actor_id?: string) =>
+    api.put<User>(`/users/${id}`, user, { params: { actor_id } }),
   
-  delete: (id: string, pin: string, actor_id?: string) =>
-    api.delete(`/users/${id}`, {
-      data: { pin },
-      params: { actor_id }
-    }),
+  delete: (id: string, actor_id?: string) =>
+    api.delete(`/users/${id}`, { params: { actor_id } }),
   
   getBalance: (id: string) =>
     api.get<UserBalance>(`/users/${id}/balance`),

@@ -2,7 +2,6 @@
 Integration tests for complete business workflows
 """
 import pytest
-from app.core.config import settings
 import uuid
 
 
@@ -19,7 +18,7 @@ def setup_users_and_product(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    user_response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    user_response = client.post("/users/", json=user_data)
     user = user_response.json()
     
     # Create two treasurers for two-person approval
@@ -27,18 +26,20 @@ def setup_users_and_product(client):
         "display_name": "Treasurer One",
         "email": f"workflow.treas1.{ts}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasOnePIN"
     }
-    treasurer1_response = client.post("/users/", json={"user": treasurer1_data, "pin": settings.admin_pin})
+    treasurer1_response = client.post("/users/", json=treasurer1_data)
     treasurer1 = treasurer1_response.json()
     
     treasurer2_data = {
         "display_name": "Treasurer Two", 
         "email": f"workflow.treas2.{ts}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasTwoPIN"
     }
-    treasurer2_response = client.post("/users/", json={"user": treasurer2_data, "pin": settings.admin_pin})
+    treasurer2_response = client.post("/users/", json=treasurer2_data)
     treasurer2 = treasurer2_response.json()
     
     # Create product

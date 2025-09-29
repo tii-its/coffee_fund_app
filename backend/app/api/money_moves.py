@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, UTC
 from app.db.session import get_db
 from app.models import MoneyMove, User
 from app.schemas import MoneyMoveCreate, MoneyMoveUpdate, MoneyMoveResponse
@@ -137,7 +137,7 @@ def confirm_money_move(
     
     # Update money move
     money_move.status = MoneyMoveStatus.CONFIRMED
-    money_move.confirmed_at = datetime.utcnow()
+    money_move.confirmed_at = datetime.now(UTC)
     money_move.confirmed_by = confirmer_id
     
     db.commit()
@@ -176,7 +176,7 @@ def reject_money_move(
     
     # Update money move
     money_move.status = MoneyMoveStatus.REJECTED
-    money_move.confirmed_at = datetime.utcnow()
+    money_move.confirmed_at = datetime.now(UTC)
     money_move.confirmed_by = rejector_id
     
     db.commit()

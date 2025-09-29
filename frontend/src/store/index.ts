@@ -25,12 +25,6 @@ interface AppState {
   authTimestamp: number | null
   setAuthTimestamp: (timestamp: number | null) => void
 
-  // Admin PIN authentication (for user management page gating)
-  adminAuthenticated: boolean
-  setAdminAuthenticated: (authenticated: boolean) => void
-  adminPin: string | null
-  setAdminPin: (pin: string | null) => void
-  clearAdminAuth: () => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -56,11 +50,7 @@ export const useAppStore = create<AppState>()(
       authTimestamp: null,
   setAuthTimestamp: (timestamp: number | null) => set({ authTimestamp: timestamp }),
 
-      adminAuthenticated: false,
-  setAdminAuthenticated: (authenticated: boolean) => set({ adminAuthenticated: authenticated }),
-  adminPin: null,
-  setAdminPin: (pin: string | null) => set({ adminPin: pin }),
-      clearAdminAuth: () => set({ adminAuthenticated: false, adminPin: null }),
+    // Removed admin PIN state (legacy global admin pin model)
     }),
     {
       name: 'coffee-fund-store',

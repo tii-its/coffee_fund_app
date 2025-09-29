@@ -3,7 +3,6 @@ Test money moves API endpoints
 """
 import pytest
 from app.core.enums import MoneyMoveType, MoneyMoveStatus
-from app.core.config import settings
 from uuid import uuid4
 
 
@@ -18,7 +17,7 @@ def test_user(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     return response.json()
 
 
@@ -30,9 +29,10 @@ def test_treasurer(client):
         "display_name": "Test Treasurer", 
         "email": f"test.treasurer.money.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasurerPIN123"
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     return response.json()
 
 
@@ -44,9 +44,10 @@ def test_treasurer2(client):
         "display_name": "Test Treasurer 2", 
         "email": f"test.treasurer2.money.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasurerPIN456"
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     return response.json()
 
 
@@ -142,7 +143,7 @@ def test_create_money_move_non_treasurer_creator(client, test_user):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    user2_response = client.post("/users/", json={"user": user2_data, "pin": settings.admin_pin})
+    user2_response = client.post("/users/", json=user2_data)
     user2 = user2_response.json()
     
     money_move_data = {
