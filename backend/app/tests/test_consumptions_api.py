@@ -4,6 +4,7 @@ Test consumption API endpoints
 import pytest
 from app.models import User, Product
 from app.core.enums import UserRole
+from app.core.config import settings
 from uuid import uuid4
 
 
@@ -18,7 +19,7 @@ def test_user(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post("/users/", json=user_data)
+    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
     return response.json()
 
 
@@ -32,7 +33,7 @@ def test_treasurer(client):
         "role": "treasurer",
         "is_active": True
     }
-    response = client.post("/users/", json=user_data)
+    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
     return response.json()
 
 

@@ -4,8 +4,8 @@ from app.core.config import settings
 
 
 def test_verify_pin_success(client):
-    """Test successful treasurer PIN verification"""
-    response = client.post("/users/verify-pin", json={"pin": settings.treasurer_pin})
+    """Test successful PIN verification"""
+    response = client.post("/users/verify-pin", json={"pin": settings.admin_pin})
     assert response.status_code == 200
     assert response.json()["message"] == "PIN verified successfully"
 
@@ -192,7 +192,7 @@ def test_update_user_with_valid_pin(client, sample_user_data):
     # First create a user
     import time
     sample_user_data = {**sample_user_data, "email": f"pin.valid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json=sample_user_data)
+    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
     # Creation endpoint returns 201 Created
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
@@ -200,7 +200,7 @@ def test_update_user_with_valid_pin(client, sample_user_data):
     # Update with valid PIN
     update_payload = {
         "user_update": {"display_name": "Updated Name"},
-        "pin": settings.treasurer_pin
+        "pin": settings.admin_pin
     }
     response = client.put(f"/users/{user_id}", json=update_payload)
     assert response.status_code == 200
@@ -212,7 +212,7 @@ def test_update_user_with_invalid_pin(client, sample_user_data):
     # First create a user
     import time
     sample_user_data = {**sample_user_data, "email": f"pin.invalid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json=sample_user_data)
+    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
@@ -231,12 +231,12 @@ def test_delete_user_with_valid_pin(client, sample_user_data):
     # First create a user
     import time
     sample_user_data = {**sample_user_data, "email": f"pin.delete.valid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json=sample_user_data)
+    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
     # Delete with valid PIN
-    response = client.request("DELETE", f"/users/{user_id}", json={"pin": settings.treasurer_pin})
+    response = client.request("DELETE", f"/users/{user_id}", json={"pin": settings.admin_pin})
     assert response.status_code == 200
     assert response.json()["message"] == "User deleted successfully"
     
@@ -251,7 +251,7 @@ def test_delete_user_with_invalid_pin(client, sample_user_data):
     # First create a user
     import time
     sample_user_data = {**sample_user_data, "email": f"pin.delete.invalid.{int(time.time()*1000)}@example.com"}
-    create_response = client.post("/users/", json=sample_user_data)
+    create_response = client.post("/users/", json={"user": sample_user_data, "pin": settings.admin_pin})
     assert create_response.status_code == 201
     user_id = create_response.json()["id"]
     
@@ -264,7 +264,7 @@ def test_delete_user_with_invalid_pin(client, sample_user_data):
 def test_change_pin(client):
     """Test PIN change functionality"""
     response = client.post("/users/change-pin", json={
-        "current_pin": settings.treasurer_pin,
+    "current_pin": settings.admin_pin,
         "new_pin": "new-pin-123"
     })
     assert response.status_code == 200

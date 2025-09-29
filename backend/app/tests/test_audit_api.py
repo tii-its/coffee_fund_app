@@ -2,6 +2,7 @@
 Test audit API endpoints
 """
 import pytest
+from app.core.config import settings
 from app.services.audit import AuditService
 from uuid import uuid4
 
@@ -17,7 +18,7 @@ def test_user(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post("/users/", json=user_data)
+    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
     return response.json()
 
 
@@ -33,7 +34,10 @@ def sample_audit_entry(client, test_user):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
+    response = client.post(
+        f"/users/?creator_id={test_user['id']}",
+        json={"user": user_data, "pin": settings.admin_pin}
+    )
     created_user = response.json()
 
     # Fetch audit entries to find the specific one
@@ -104,7 +108,10 @@ def test_get_audit_entries_pagination(client, test_user):
             "is_active": True,
             "pin": "testpin123"  # PIN is now required for all users
         }
-        client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
+        client.post(
+            f"/users/?creator_id={test_user['id']}",
+            json={"user": user_data, "pin": settings.admin_pin}
+        )
     
     # Test pagination
     response = client.get("/audit/?skip=0&limit=3")
@@ -149,7 +156,10 @@ def test_audit_entries_ordered_by_date(client, test_user):
             "is_active": True,
             "pin": "testpin123"  # PIN is now required for all users
         }
-        response = client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
+        response = client.post(
+            f"/users/?creator_id={test_user['id']}",
+            json={"user": user_data, "pin": settings.admin_pin}
+        )
         entry_names.append(user_data["display_name"])
     
     response = client.get("/audit/")

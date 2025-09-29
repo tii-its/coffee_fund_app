@@ -16,16 +16,10 @@ class TestPinService:
         expected_hash = hashlib.sha256(pin.encode()).hexdigest()
         assert PinService.hash_pin(pin) == expected_hash
 
-    def test_verify_treasurer_pin_with_default(self):
-        """Test treasurer PIN verification against default PIN"""
-        # Should verify against the default treasurer PIN from settings
-        assert PinService.verify_treasurer_pin(settings.treasurer_pin) is True
-        assert PinService.verify_treasurer_pin("wrong-pin") is False
-
-    def test_verify_pin_backwards_compatibility(self):
-        """Test backwards compatibility for verify_pin method"""
-        # Should still work for treasurer PIN verification
-        assert PinService.verify_pin(settings.treasurer_pin) is True
+    def test_verify_pin_with_default(self):
+        """Test PIN verification against default admin PIN"""
+        # Should verify against the default admin PIN from settings
+        assert PinService.verify_pin(settings.admin_pin) is True
         assert PinService.verify_pin("wrong-pin") is False
 
     def test_verify_pin_with_provided_hash(self):
@@ -103,5 +97,5 @@ class TestPinService:
 
     def test_get_default_pin_hash(self):
         """Test getting default PIN hash"""
-        expected = PinService.hash_pin(settings.treasurer_pin)
+        expected = PinService.hash_pin(settings.admin_pin)
         assert PinService.get_default_pin_hash() == expected

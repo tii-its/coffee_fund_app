@@ -9,29 +9,45 @@ from datetime import datetime
 
 
 class PinService:
-    """Service for handling PIN authentication for all users and treasurer operations"""
-    
-    TREASURER_PIN_KEY = "treasurer_pin_hash"
-    
+    """Service for handling global admin PIN (formerly treasurer PIN).
+
+    Backward compatibility:
+      - Database key renamed from 'treasurer_pin_hash' to 'admin_pin_hash'.
+      - Env var TREASURER_PIN deprecated; ADMIN_PIN preferred.
+    This service looks for the new key first, then falls back to the legacy key.
+    """
+
+    ADMIN_PIN_KEY = "admin_pin_hash"
+    TREASURER_PIN_KEY = "treasurer_pin_hash"  # legacy constant (do not remove until deprecation window passes)
+    # TODO: Remove TREASURER_PIN_KEY fallback and positional (pin, hash) ambiguity support after deprecation window (set target release date)
+
     @staticmethod
     def hash_pin(pin: str) -> str:
         """Hash a PIN using SHA256"""
         return hashlib.sha256(pin.encode()).hexdigest()
-    
+
     @staticmethod
     def get_current_pin_hash(db: Session) -> str:
-        """Get the current treasurer PIN hash from database or fallback to settings"""
-        # Try to get from database first
-        setting = db.query(SystemSettings).filter(
-            SystemSettings.key == PinService.TREASURER_PIN_KEY
-        ).first()
-        
+        """Get the current admin PIN hash from database or fallback.
+
+        Order of resolution:
+          1. admin_pin_hash (new)
+          2. treasurer_pin_hash (legacy) – silent usage (could log later)
+          3. settings.admin_pin value (hashed)
+        """
+        # New key first
+        setting = db.query(SystemSettings).filter(SystemSettings.key == PinService.ADMIN_PIN_KEY).first()
         if setting and setting.value:
             return setting.value
-            
-        # Fallback to settings-based PIN
-        return PinService.hash_pin(settings.treasurer_pin)
-    
+
+        # Legacy key fallback
+        legacy = db.query(SystemSettings).filter(SystemSettings.key == PinService.TREASURER_PIN_KEY).first()
+        if legacy and legacy.value:
+            return legacy.value
+
+        # Fallback to config (hash on the fly)
+        return PinService.hash_pin(settings.admin_pin)
+
     @staticmethod
     def verify_treasurer_pin(pin: str, db: Optional[Session] = None, hashed_pin: Optional[str] = None) -> bool:
         """Verify a PIN against the stored treasurer hash.
@@ -52,9 +68,9 @@ class PinService:
             current_hash = PinService.get_current_pin_hash(db)
             return PinService.hash_pin(pin) == current_hash
 
-        # Fallback to settings-based verification (default PIN)
-        return PinService.hash_pin(pin) == PinService.hash_pin(settings.treasurer_pin)
-    
+        # Fallback to settings-based verification (default admin PIN)
+        return PinService.hash_pin(pin) == PinService.hash_pin(settings.admin_pin)
+
     @staticmethod
     def verify_pin(pin: str, db: Optional[Session] = None, hashed_pin: Optional[str] = None) -> bool:
         """Legacy method for backwards compatibility - delegates to verify_treasurer_pin"""
@@ -92,36 +108,37 @@ class PinService:
     
     @staticmethod
     def change_pin(db: Session, current_pin: str, new_pin: str) -> bool:
-        """Change the treasurer PIN after verifying the current PIN"""
+        """Change the admin PIN after verifying the current PIN (migrates legacy key)."""
         # Verify current PIN first
         if not PinService.verify_treasurer_pin(current_pin, db=db):
             return False
-            
+
         # Hash the new PIN
         new_pin_hash = PinService.hash_pin(new_pin)
-        
-        # Check if setting exists
-        setting = db.query(SystemSettings).filter(
-            SystemSettings.key == PinService.TREASURER_PIN_KEY
-        ).first()
-        
+
+        # Prefer new key; if only legacy exists, migrate in-place.
+        setting = db.query(SystemSettings).filter(SystemSettings.key == PinService.ADMIN_PIN_KEY).first()
+        if not setting:
+            legacy = db.query(SystemSettings).filter(SystemSettings.key == PinService.TREASURER_PIN_KEY).first()
+            if legacy:
+                legacy.key = PinService.ADMIN_PIN_KEY
+                setting = legacy
+
         if setting:
-            # Update existing setting
             setting.value = new_pin_hash
             setting.updated_at = datetime.utcnow()
         else:
-            # Create new setting
             setting = SystemSettings(
-                key=PinService.TREASURER_PIN_KEY,
+                key=PinService.ADMIN_PIN_KEY,
                 value=new_pin_hash,
-                is_encrypted=False  # Already hashed, so not doubly encrypted
+                is_encrypted=False
             )
             db.add(setting)
-            
+
         db.commit()
         return True
-    
+
     @staticmethod
     def get_default_pin_hash() -> str:
-        """Get the hash of the default treasurer PIN"""
-        return PinService.hash_pin(settings.treasurer_pin)
+        """Get the hash of the default admin PIN"""
+        return PinService.hash_pin(settings.admin_pin)

@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { usersApi } from '@/api/client'
 import { formatDate } from '@/lib/utils'
+import { usersApi } from '@/api/client'
 import type { User, UserUpdate, UserCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
 import UserCreateModal from '@/components/UserCreateModal'
 import PinInputModal from '@/components/PinInputModal'
+import { useAppStore } from '@/store'
+// usersApi already imported above
 
 const Users: React.FC = () => {
   const { t } = useTranslation()
@@ -18,13 +20,23 @@ const Users: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
+  const adminAuthenticated = useAppStore((s: any) => s.adminAuthenticated)
+  const setAdminAuthenticated = useAppStore((s: any) => s.setAdminAuthenticated)
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.getAll().then((res: AxiosResponse<User[]>) => res.data),
+    enabled: adminAuthenticated, // only load after admin PIN verification
   })
 
+  const adminPin = useAppStore((s: any) => s.adminPin)
+  const setAdminPin = useAppStore((s: any) => s.setAdminPin)
+
   const createUserMutation = useMutation({
-    mutationFn: (userCreate: UserCreate) => usersApi.create(userCreate),
+    mutationFn: (userCreate: UserCreate) => {
+      if (!adminPin) throw new Error('Admin PIN missing')
+      return usersApi.create(userCreate, adminPin)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setCreateModalOpen(false)
@@ -86,6 +98,31 @@ const Users: React.FC = () => {
   const handleDeleteSubmit = async (pin: string) => {
     if (!selectedUser) return
     deleteUserMutation.mutate({ userId: selectedUser.id, pin })
+  }
+
+  const [pinError, setPinError] = useState<string | null>(null)
+  if (!adminAuthenticated) {
+    return (
+      <div>
+        <PinInputModal
+          isOpen={true}
+          onClose={() => { /* keep modal open until success */ }}
+          onSubmit={async (pin: string) => {
+            try {
+              setPinError(null)
+              await usersApi.verifyPin(pin)
+              setAdminAuthenticated(true)
+              setAdminPin(pin)
+            } catch (e: any) {
+              const msg = e?.response?.data?.detail || t('pin.invalid')
+              setPinError(msg)
+            }
+          }}
+          title={t('pin.verification')}
+          description={pinError ? pinError : t('pin.description')}
+        />
+      </div>
+    )
   }
 
   if (isLoading) {

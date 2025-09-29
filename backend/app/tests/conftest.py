@@ -18,6 +18,7 @@ from app.db.session import get_db, Base
 # Import all models to ensure they're registered with Base.metadata
 from app.models import User, Product, Consumption, MoneyMove, Audit
 from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus, AuditAction
+from app.core.config import settings
 
 
 # Custom TypeDecorator for UUID compatibility with SQLite
@@ -237,12 +238,12 @@ def test_user(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post("/users/", json=user_data)
+    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
     if response.status_code != 201:
         # If user exists, try with a timestamp to make it unique
         import time
         user_data["display_name"] = f"API Test User {int(time.time() * 1000)}"
-        response = client.post("/users/", json=user_data)
+    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
     
     if response.status_code != 201:
         print(f"Failed to create user. Status: {response.status_code}, Response: {response.text}")
@@ -265,12 +266,12 @@ def test_treasurer(client):
         "role": "treasurer",
         "is_active": True
     }
-    response = client.post("/users/", json=treasurer_data)
+    response = client.post("/users/", json={"user": treasurer_data, "pin": settings.admin_pin})
     if response.status_code != 201:
         # If user exists, try with a timestamp to make it unique
         import time
         treasurer_data["display_name"] = f"API Test Treasurer {int(time.time() * 1000)}"
-        response = client.post("/users/", json=treasurer_data)
+    response = client.post("/users/", json={"user": treasurer_data, "pin": settings.admin_pin})
     
     if response.status_code != 201:
         print(f"Failed to create treasurer. Status: {response.status_code}, Response: {response.text}")
