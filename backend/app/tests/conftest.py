@@ -238,12 +238,12 @@ def test_user(client):
         "is_active": True,
         "pin": "testpin123"  # PIN is now required for all users
     }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     if response.status_code != 201:
         # If user exists, try with a timestamp to make it unique
         import time
         user_data["display_name"] = f"API Test User {int(time.time() * 1000)}"
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=user_data)
     
     if response.status_code != 201:
         print(f"Failed to create user. Status: {response.status_code}, Response: {response.text}")
@@ -264,14 +264,15 @@ def test_treasurer(client):
         "display_name": "API Test Treasurer",
         "email": f"api.test.treasurer.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasurerPIN123"
     }
-    response = client.post("/users/", json={"user": treasurer_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=treasurer_data)
     if response.status_code != 201:
         # If user exists, try with a timestamp to make it unique
         import time
         treasurer_data["display_name"] = f"API Test Treasurer {int(time.time() * 1000)}"
-    response = client.post("/users/", json={"user": treasurer_data, "pin": settings.admin_pin})
+    response = client.post("/users/", json=treasurer_data)
     
     if response.status_code != 201:
         print(f"Failed to create treasurer. Status: {response.status_code}, Response: {response.text}")
@@ -331,13 +332,12 @@ def sample_treasurer_data():
     """Sample treasurer data for testing."""
     import time
     ts = int(time.time()*1000)
-    from app.core.config import settings
     return {
         "display_name": "Test Treasurer",
         "email": f"test.treasurer.{ts}@example.com",
         "role": "treasurer",
         "is_active": True,
-        "pin": settings.treasurer_pin  # Use treasurer PIN for authorization
+        "pin": "treasurerPIN123"
     }
 
 
