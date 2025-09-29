@@ -115,11 +115,12 @@ Makefile
 ### users
 - id (uuid, pk)
 - display_name (str)
-- email (str, unique, required) - Used for notifications and updates
+- email (str, unique, optional) - Used for notifications and updates
 - qr_code (str?, optional)
 - role (enum: user/treasurer)
 - is_active (bool)
 - created_at (ts)
+- PIN (str, hashed, required)
 
 ### products
 - id (uuid, pk)
@@ -146,8 +147,8 @@ Makefile
 - note (str?)
 - created_at (ts)
 - created_by (fk users)
-- confirmed_at (ts?)
-- confirmed_by (fk users?)
+- confirmed_at (t?)
+- confirmed_by (fk users): must be different from created_by, must be a treasurer
 - status (enum: pending/confirmed/rejected)
 
 ### audit
@@ -161,12 +162,20 @@ Makefile
 
 ---
 
+## Roles
+- **User**: Can access dashboard, kiosk
+- **Treasurer**:  All User rights + access products and treasurer page
+- **Admin**: not a user, just a Admin PIN
+
 ## UI / UX Notes
 - **Kiosk mode**: Fast booking in 2–3 clicks. User → Product → Confirm.
 - **Multi-user concurrency**: Ensure backend handles multiple parallel sessions without race conditions (use transactions).  
 - **Internationalization**: Use i18next in frontend, store strings in `/src/i18n/de.json` and `/src/i18n/en.json`. Default language: German. User can switch in UI.  
-- **Treasurer dashboard**: List of all balances, pending confirmations, product mgmt, CSV export.  
-- **User dashboard**: Current balance, consumption history, pending confirmations.  
+- **Treasurer dashboard**: Requires Treasurer role. List of all balances, pending confirmations, product mgmt, CSV export, money movement approvals
+- **Dashboard**: Overview of coffee fund balance, Allows selection of user which leads to user dashboard; top 3 coffee consumers, List of users below threshold, 
+- **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN
+**Users page**: Requires ADMIN pin to access. List all users, create new users, edit existing users (change role, deactivate).
+- **Products**: Requrires Treasurer role. List, create, edit, deactivate products.
 
 ---
 
@@ -181,12 +190,12 @@ Makefile
 - **Balance Logic**: BalanceService calculates: `confirmed_deposits - confirmed_payouts - all_consumptions`
 - **Audit Trail**: Every mutation logged via AuditService with actor_id and structured metadata
 - **Two-Person Rule**: Money moves need creator ≠ confirmer, enforced in API layer
-- **User Creation**: Creating users with treasurer role requires PIN verification. Email field is mandatory and validated.
+- **User Creation**: Creating users with admin PIN verification. Email field is optional
 
 ### Frontend Components
-- **UserCreateModal**: Form-based modal for creating new users with email validation and role-based PIN input
+- **UserCreateModal**: Form-based modal for creating new users
 - **UserEditModal**: Modal for editing existing users (includes email field)
-- **Treasurer PIN**: PIN input is required when creating users with treasurer role
+- **Admin PIN**: PIN input is required when accessing users page to create or edit users
 
 ### API Development
 - **Response Objects**: Use FastAPI Response for file downloads with proper headers:
@@ -215,9 +224,4 @@ Makefile
 4. Treasurer can view balances, pending confirmations, export CSV.  
 5. Deposits/payouts require confirmation by user before balance changes.  
 6. All actions are logged in `audit` table.
-7. **Create User button is functional** and opens a modal with proper form validation.
-8. **Email address is required** for all users and used for notifications/updates.
-9. **PIN verification required** when creating users with treasurer role.
-10. **Email validation** ensures valid email format before user creation.
-
 ---
