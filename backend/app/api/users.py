@@ -16,39 +16,32 @@ from app.core.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-# PIN verification schemas
-class PinVerificationRequest(BaseModel):
-    pin: str
+"""User management endpoints.
 
-
-class PinChangeRequest(BaseModel):
-    current_pin: str
-    new_pin: str
+Refactored: Removed global Admin/Treasurer PIN concept. All authentication now
+relies on per-user PINs. User creation always requires a per-user PIN (hashed
+server-side). Privileged actions (future enhancement) should verify the actor's
+own PIN; for now we only log actor_id for audit trail.
+"""
 
 
 @router.post("/", response_model=UserResponse, status_code=201)
 def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
-    creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user"),
-    pin: str = Body(..., description="Admin PIN for privileged user creation", embed=True)
+    creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user")
 ):
-    """Create a new user (admin PIN required)."""
-    # Email must be provided and unique
+    """Create a new user.
+
+    Requirements:
+    - Email must be unique.
+    - Per-user PIN is mandatory (already enforced by schema).
+    """
     existing_email = db.query(User).filter(User.email == user.email).first()
     if existing_email:
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
-    # Verify admin PIN (global) always for user creation
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
-
-    # If creating a treasurer, verify the treasurer PIN for authorization
-    if user.role == UserRole.TREASURER:
-        if not PinService.verify_treasurer_pin(user.pin, db=db):
-            raise HTTPException(status_code=403, detail="Invalid treasurer PIN")
-
-    # Create new user (exclude PIN from database, but store the hash)
+    # Hash user PIN
     user_data = user.model_dump(exclude={'pin'})
     user_data['pin_hash'] = PinService.hash_pin(user.pin)
     db_user = User(**user_data)
@@ -56,7 +49,6 @@ def create_user(
     db.commit()
     db.refresh(db_user)
 
-    # Log action
     if creator_id:
         AuditService.log_action(
             db=db,
@@ -100,22 +92,19 @@ def update_user(
     user_id: UUID,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update"),
-    pin: str = Body(..., description="Admin PIN for privileged update", embed=True)
+    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update")
 ):
-    """Update a user (requires admin PIN)."""
-    # Verify admin PIN
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+    """Update a user.
 
+    NOTE: Actor authorization & PIN verification to be added in a future
+    enhancement; currently any caller can update. Only PIN changes require
+    providing a new 'pin' value inside user_update.
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Update fields
     update_data = user_update.model_dump(exclude_unset=True)
-
-    # Handle PIN update separately if provided
     if 'pin' in update_data:
         new_pin = update_data.pop('pin')
         if new_pin:
@@ -127,7 +116,6 @@ def update_user(
     db.commit()
     db.refresh(user)
 
-    # Log action
     if actor_id:
         AuditService.log_action(
             db=db,
@@ -145,24 +133,20 @@ def update_user(
 def delete_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the deletion"),
-    pin: str = Body(..., description="Admin PIN for privileged deletion", embed=True)
+    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the deletion")
 ):
-    """Delete (soft) a user (requires admin PIN)."""
-    # Verify admin PIN
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+    """Soft delete a user.
 
+    NOTE: Actor authorization & PIN verification will be added later.
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Soft delete by setting is_active to False
     user.is_active = False
     db.commit()
     db.refresh(user)
 
-    # Log action
     if actor_id:
         AuditService.log_action(
             db=db,
@@ -176,13 +160,7 @@ def delete_user(
     return {"message": "User deleted successfully"}
 
 
-@router.post("/verify-pin")
-def verify_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
-    """Verify admin PIN."""
-    if not PinService.verify_pin(pin_request.pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
-
-    return {"message": "PIN verified successfully"}
+# Removed legacy global /verify-pin endpoint (deprecated)
 
 
 @router.post("/verify-user-pin")
@@ -194,29 +172,7 @@ def verify_user_pin(pin_request: UserPinVerificationRequest, db: Session = Depen
     return {"message": "User PIN verified successfully"}
 
 
-@router.post("/change-pin")
-def change_pin(
-    pin_change: PinChangeRequest,
-    db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
-):
-    """Change the admin PIN (requires current PIN)."""
-    # Use the enhanced PIN service to change the PIN
-    if not PinService.change_pin(db, pin_change.current_pin, pin_change.new_pin):
-        raise HTTPException(status_code=403, detail="Invalid current PIN")
-    
-    # Log the action for audit purposes
-    if actor_id:
-        AuditService.log_action(
-            db=db,
-            actor_id=actor_id,
-            action="change_pin",
-            entity="system",
-            entity_id=str(actor_id),
-            meta_data={"operation": "pin_change"}
-        )
-    
-    return {"message": "PIN changed successfully"}
+# Removed legacy global /change-pin endpoint (deprecated)
 
 
 @router.post("/change-user-pin")
