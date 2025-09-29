@@ -14,7 +14,8 @@ def test_user(client):
         "display_name": "Test User",
         "email": f"audit.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     response = client.post("/users/", json=user_data)
     return response.json()
@@ -29,7 +30,8 @@ def sample_audit_entry(client, test_user):
         "display_name": "Audit Test User",
         "email": f"audit.create.user.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     response = client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
     created_user = response.json()
@@ -99,7 +101,8 @@ def test_get_audit_entries_pagination(client, test_user):
             "display_name": f"Pagination User {i}",
             "email": f"audit.pagination.{i}.{int(time.time()*1000)}@example.com",
             "role": "user",
-            "is_active": True
+            "is_active": True,
+            "pin": "testpin123"  # PIN is now required for all users
         }
         client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
     
@@ -143,7 +146,8 @@ def test_audit_entries_ordered_by_date(client, test_user):
             "display_name": f"Order User {i}",
             "email": f"audit.order.{i}.{int(time.time()*1000)}@example.com",
             "role": "user", 
-            "is_active": True
+            "is_active": True,
+            "pin": "testpin123"  # PIN is now required for all users
         }
         response = client.post(f"/users/?creator_id={test_user['id']}", json=user_data)
         entry_names.append(user_data["display_name"])

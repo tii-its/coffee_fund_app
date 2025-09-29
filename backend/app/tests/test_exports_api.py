@@ -15,7 +15,8 @@ def test_user(client):
         "display_name": "Test User",
         "email": f"test.user.exports.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     response = client.post("/users/", json=user_data)
     return response.json()
@@ -25,11 +26,13 @@ def test_user(client):
 def test_treasurer(client):
     """Create a test treasurer"""
     import time
+    from app.core.config import settings
     user_data = {
         "display_name": "Test Treasurer", 
         "email": f"test.treasurer.exports.{int(time.time()*1000)}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": settings.treasurer_pin  # Use treasurer PIN for authorization
     }
     response = client.post("/users/", json=user_data)
     return response.json()

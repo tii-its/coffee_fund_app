@@ -234,7 +234,8 @@ def test_user(client):
         "display_name": "API Test User",
         "email": f"api.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     response = client.post("/users/", json=user_data)
     if response.status_code != 201:
@@ -319,7 +320,8 @@ def sample_user_data():
         "display_name": "Test User",
         "email": f"test.user.{ts}@example.com",
         "role": "user", 
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
 
 
@@ -328,11 +330,13 @@ def sample_treasurer_data():
     """Sample treasurer data for testing."""
     import time
     ts = int(time.time()*1000)
+    from app.core.config import settings
     return {
         "display_name": "Test Treasurer",
         "email": f"test.treasurer.{ts}@example.com",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": settings.treasurer_pin  # Use treasurer PIN for authorization
     }
 
 

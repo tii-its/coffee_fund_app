@@ -15,7 +15,8 @@ def test_user(client):
         "display_name": "Test User",
         "email": f"consumption.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     response = client.post("/users/", json=user_data)
     return response.json()

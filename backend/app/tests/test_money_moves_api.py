@@ -14,7 +14,8 @@ def test_user(client):
         "display_name": "Test User",
         "email": f"test.user.money.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     response = client.post("/users/", json=user_data)
     return response.json()
@@ -137,7 +138,8 @@ def test_create_money_move_non_treasurer_creator(client, test_user):
         "display_name": "Regular User 2",
         "email": f"regular.user2.money.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     user2_response = client.post("/users/", json=user2_data)
     user2 = user2_response.json()

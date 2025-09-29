@@ -15,7 +15,8 @@ def setup_users_and_product(client):
         "display_name": "Coffee Consumer",
         "email": f"workflow.user.{ts}@example.com",
         "role": "user",
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"  # PIN is now required for all users
     }
     user_response = client.post("/users/", json=user_data)
     user = user_response.json()
