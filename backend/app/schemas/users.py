@@ -14,7 +14,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    pin: Optional[str] = None  # Required for treasurer role
+    pin: str  # Required for all users now
 
 
 class UserUpdate(BaseModel):
@@ -23,6 +23,7 @@ class UserUpdate(BaseModel):
     qr_code: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    pin: Optional[str] = None  # Optional PIN update
 
 
 class UserResponse(UserBase):
@@ -37,3 +38,14 @@ class UserBalance(BaseModel):
     balance_cents: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserPinVerificationRequest(BaseModel):
+    user_id: UUID
+    pin: str
+
+
+class UserPinChangeRequest(BaseModel):
+    user_id: UUID
+    current_pin: str
+    new_pin: str

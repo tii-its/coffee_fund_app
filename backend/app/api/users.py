@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models import User
-from app.schemas import UserBalance, UserCreate, UserResponse, UserUpdate
+from app.schemas import UserBalance, UserCreate, UserResponse, UserUpdate, UserPinVerificationRequest, UserPinChangeRequest
 from app.services.audit import AuditService
 from app.services.balance import BalanceService
 from app.services.qr_code import QRCodeService
@@ -38,13 +38,18 @@ def create_user(
     if existing_email:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
-    # If creating a treasurer and a PIN was provided, verify it. If no PIN provided, allow creation
-    if user.role == UserRole.TREASURER and user.pin:
-        if not PinService.verify_pin(user.pin, db=db):
-            raise HTTPException(status_code=403, detail="Invalid PIN for treasurer creation")
+    # PIN is now required for all users
+    if not user.pin:
+        raise HTTPException(status_code=400, detail="PIN is required for all users")
     
-    # Create new user (exclude PIN from database)
+    # If creating a treasurer, verify the treasurer PIN for authorization
+    if user.role == UserRole.TREASURER:
+        if not PinService.verify_treasurer_pin(user.pin, db=db):
+            raise HTTPException(status_code=403, detail="Invalid treasurer PIN")
+    
+    # Create new user (exclude PIN from database, but store the hash)
     user_data = user.model_dump(exclude={'pin'})
+    user_data['pin_hash'] = PinService.hash_pin(user.pin)
     db_user = User(**user_data)
     db.add(db_user)
     db.commit()
@@ -99,7 +104,7 @@ def update_user(
 ):
     """Update a user (requires PIN verification)"""
     # Verify PIN for treasurer operations
-    if not PinService.verify_pin(pin, db=db):
+    if not PinService.verify_treasurer_pin(pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -108,6 +113,13 @@ def update_user(
 
     # Update fields
     update_data = user_update.model_dump(exclude_unset=True)
+    
+    # Handle PIN update separately if provided
+    if 'pin' in update_data:
+        new_pin = update_data.pop('pin')
+        if new_pin:
+            user.pin_hash = PinService.hash_pin(new_pin)
+    
     for field, value in update_data.items():
         setattr(user, field, value)
 
@@ -137,7 +149,7 @@ def delete_user(
 ):
     """Delete a user (requires PIN verification)"""
     # Verify PIN for treasurer operations
-    if not PinService.verify_pin(pin, db=db):
+    if not PinService.verify_treasurer_pin(pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -166,10 +178,19 @@ def delete_user(
 @router.post("/verify-pin")
 def verify_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
     """Verify PIN for treasurer operations"""
-    if not PinService.verify_pin(pin_request.pin, db=db):
+    if not PinService.verify_treasurer_pin(pin_request.pin, db=db):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     return {"message": "PIN verified successfully"}
+
+
+@router.post("/verify-user-pin")
+def verify_user_pin(pin_request: UserPinVerificationRequest, db: Session = Depends(get_db)):
+    """Verify a specific user's PIN"""
+    if not PinService.verify_user_pin(pin_request.user_id, pin_request.pin, db):
+        raise HTTPException(status_code=403, detail="Invalid user PIN")
+    
+    return {"message": "User PIN verified successfully"}
 
 
 @router.post("/change-pin")
@@ -195,6 +216,30 @@ def change_pin(
         )
     
     return {"message": "PIN changed successfully"}
+
+
+@router.post("/change-user-pin")
+def change_user_pin(
+    pin_change: UserPinChangeRequest,
+    db: Session = Depends(get_db),
+    actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
+):
+    """Change a specific user's PIN (requires current PIN)"""
+    if not PinService.change_user_pin(pin_change.user_id, pin_change.current_pin, pin_change.new_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid current PIN")
+    
+    # Log the action for audit purposes
+    if actor_id:
+        AuditService.log_action(
+            db=db,
+            actor_id=actor_id,
+            action="change_user_pin",
+            entity="user", 
+            entity_id=pin_change.user_id,
+            meta_data={"operation": "user_pin_change"}
+        )
+    
+    return {"message": "User PIN changed successfully"}
 
 
 @router.get("/{user_id}/balance", response_model=UserBalance)

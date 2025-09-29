@@ -1,13 +1,15 @@
 import hashlib
 from typing import Optional
+from uuid import UUID
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.system_settings import SystemSettings
+from app.models.users import User
 from datetime import datetime
 
 
 class PinService:
-    """Service for handling PIN authentication for treasurer operations"""
+    """Service for handling PIN authentication for all users and treasurer operations"""
     
     TREASURER_PIN_KEY = "treasurer_pin_hash"
     
@@ -18,7 +20,7 @@ class PinService:
     
     @staticmethod
     def get_current_pin_hash(db: Session) -> str:
-        """Get the current PIN hash from database or fallback to settings"""
+        """Get the current treasurer PIN hash from database or fallback to settings"""
         # Try to get from database first
         setting = db.query(SystemSettings).filter(
             SystemSettings.key == PinService.TREASURER_PIN_KEY
@@ -31,8 +33,8 @@ class PinService:
         return PinService.hash_pin(settings.treasurer_pin)
     
     @staticmethod
-    def verify_pin(pin: str, db: Optional[Session] = None, hashed_pin: Optional[str] = None) -> bool:
-        """Verify a PIN against the stored hash.
+    def verify_treasurer_pin(pin: str, db: Optional[Session] = None, hashed_pin: Optional[str] = None) -> bool:
+        """Verify a PIN against the stored treasurer hash.
 
         Backwards compatibility: some tests may call verify_pin(pin, hashed_pin)
         thinking the second positional arg is the hash. Detect this pattern by
@@ -54,10 +56,45 @@ class PinService:
         return PinService.hash_pin(pin) == PinService.hash_pin(settings.treasurer_pin)
     
     @staticmethod
+    def verify_pin(pin: str, db: Optional[Session] = None, hashed_pin: Optional[str] = None) -> bool:
+        """Legacy method for backwards compatibility - delegates to verify_treasurer_pin"""
+        return PinService.verify_treasurer_pin(pin, db, hashed_pin)
+    
+    @staticmethod
+    def verify_user_pin(user_id: UUID, pin: str, db: Session) -> bool:
+        """Verify a user's PIN against their stored hash"""
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.pin_hash:
+            return False
+        
+        return PinService.hash_pin(pin) == user.pin_hash
+    
+    @staticmethod
+    def set_user_pin(user_id: UUID, new_pin: str, db: Session) -> bool:
+        """Set a user's PIN"""
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
+        
+        user.pin_hash = PinService.hash_pin(new_pin)
+        db.commit()
+        return True
+    
+    @staticmethod
+    def change_user_pin(user_id: UUID, current_pin: str, new_pin: str, db: Session) -> bool:
+        """Change a user's PIN after verifying the current PIN"""
+        # Verify current PIN first
+        if not PinService.verify_user_pin(user_id, current_pin, db):
+            return False
+        
+        # Set new PIN
+        return PinService.set_user_pin(user_id, new_pin, db)
+    
+    @staticmethod
     def change_pin(db: Session, current_pin: str, new_pin: str) -> bool:
         """Change the treasurer PIN after verifying the current PIN"""
         # Verify current PIN first
-        if not PinService.verify_pin(current_pin, db=db):
+        if not PinService.verify_treasurer_pin(current_pin, db=db):
             return False
             
         # Hash the new PIN
