@@ -1,10 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional
 from uuid import UUID
 from app.db.session import get_db
 from app.models import Product, Consumption, User
+from app.services.pin import PinService
+from app.core.enums import UserRole
+def treasurer_actor(
+    actor_id: UUID = Header(..., alias="x-actor-id"),
+    actor_pin: str = Header(..., alias="x-actor-pin"),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == actor_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if user.role != UserRole.TREASURER:
+        raise HTTPException(status_code=403, detail="Only treasurers allowed")
+    if not PinService.verify_user_pin(user.id, actor_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid treasurer PIN")
+    return user
 from app.schemas import ProductCreate, ProductUpdate, ProductResponse, ProductConsumptionStats, UserConsumptionStat
 from app.services.audit import AuditService
 
@@ -15,7 +30,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
-    creator_id: Optional[UUID] = Query(None, description="ID of the user creating this product")
+    treasurer=Depends(treasurer_actor)
 ):
     """Create a new product"""
     # Check if product with this name already exists
@@ -30,15 +45,14 @@ def create_product(
     db.refresh(db_product)
     
     # Log action
-    if creator_id:
-        AuditService.log_action(
-            db=db,
-            actor_id=creator_id,
-            action="create",
-            entity="product",
-            entity_id=db_product.id,
-            meta_data={"name": product.name, "price_cents": product.price_cents}
-        )
+    AuditService.log_action(
+        db=db,
+        actor_id=treasurer.id,
+        action="create",
+        entity="product",
+        entity_id=db_product.id,
+        meta_data={"name": product.name, "price_cents": product.price_cents}
+    )
     
     return ProductResponse.model_validate(db_product)
 
@@ -133,7 +147,7 @@ def update_product(
     product_id: UUID,
     product_update: ProductUpdate,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update")
+    treasurer=Depends(treasurer_actor)
 ):
     """Update a product"""
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -149,15 +163,14 @@ def update_product(
     db.refresh(product)
     
     # Log action
-    if actor_id:
-        AuditService.log_action(
-            db=db,
-            actor_id=actor_id,
-            action="update",
-            entity="product",
-            entity_id=product.id,
-            meta_data=update_data
-        )
+    AuditService.log_action(
+        db=db,
+        actor_id=treasurer.id,
+        action="update",
+        entity="product",
+        entity_id=product.id,
+        meta_data=update_data
+    )
     
     return product
 
@@ -166,7 +179,7 @@ def update_product(
 def delete_product(
     product_id: UUID,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the delete")
+    treasurer=Depends(treasurer_actor)
 ):
     """Deactivate a product (soft delete)"""
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -177,14 +190,13 @@ def delete_product(
     db.commit()
     
     # Log action
-    if actor_id:
-        AuditService.log_action(
-            db=db,
-            actor_id=actor_id,
-            action="delete",
-            entity="product",
-            entity_id=product.id,
-            meta_data={"name": product.name}
-        )
+    AuditService.log_action(
+        db=db,
+        actor_id=treasurer.id,
+        action="delete",
+        entity="product",
+        entity_id=product.id,
+        meta_data={"name": product.name}
+    )
     
     return {"message": "Product deactivated successfully"}

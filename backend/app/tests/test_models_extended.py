@@ -13,7 +13,6 @@ def db_test_user(db_session):
     """Create a test user"""
     user = User(
         display_name="Test User",
-        email="test.user@example.com",
         role=UserRole.USER,
         is_active=True
     )
@@ -28,7 +27,6 @@ def db_test_treasurer(db_session):
     """Create a test treasurer"""
     treasurer = User(
         display_name="Test Treasurer",
-        email="test.treasurer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -204,7 +202,6 @@ def test_money_move_model_confirmation(db_session, db_test_user, db_test_treasur
     # Create second treasurer for confirmation
     treasurer2 = User(
         display_name="Treasurer 2",
-        email="models.treasurer2@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -242,7 +239,6 @@ def test_money_move_model_relationships(db_session, db_test_user, db_test_treasu
     # Create confirmer
     confirmer = User(
         display_name="Confirmer",
-        email="models.confirmer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )

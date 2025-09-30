@@ -12,7 +12,6 @@ import uuid
 def db_test_user(db_session):
     user = User(
         display_name="Test User",
-        email="audit.user@example.com",
         role=UserRole.USER,
         is_active=True
     )
@@ -26,7 +25,6 @@ def db_test_user(db_session):
 def db_test_treasurer(db_session):
     treasurer = User(
         display_name="Test Treasurer",
-        email="audit.treasurer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )

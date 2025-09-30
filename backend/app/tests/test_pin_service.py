@@ -22,7 +22,6 @@ class TestPinService:
         # Create a test user with PIN
         user = User(
             display_name="Test User",
-            email="test@example.com",
             role=UserRole.USER,
             pin_hash=PinService.hash_pin("user123")
         )
@@ -42,7 +41,6 @@ class TestPinService:
         # Create a test user without PIN
         user = User(
             display_name="Test User",
-            email="test2@example.com",
             role=UserRole.USER
         )
         db_session.add(user)
@@ -64,7 +62,6 @@ class TestPinService:
         # Create a test user with PIN
         user = User(
             display_name="Test User",
-            email="test3@example.com",
             role=UserRole.USER,
             pin_hash=PinService.hash_pin("old-pin")
         )

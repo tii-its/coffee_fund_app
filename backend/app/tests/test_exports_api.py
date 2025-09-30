@@ -7,76 +7,60 @@ import io
 from uuid import uuid4
 
 
+def _wrapper(admin_bootstrap, user_sub_payload: dict):
+    return {"actor_id": admin_bootstrap["id"], "actor_pin": admin_bootstrap["pin"], "user": user_sub_payload}
+
+
 @pytest.fixture
-def test_user(client):
-    """Create a test user"""
-    import time
-    user_data = {
+def test_user(client, admin_bootstrap):
+    payload = _wrapper(admin_bootstrap, {
         "display_name": "Test User",
-        "email": f"test.user.exports.{int(time.time()*1000)}@example.com",
         "role": "user",
         "is_active": True,
-        "pin": "testpin123"  # PIN is now required for all users
-    }
-    response = client.post("/users/", json=user_data)
+        "pin": "testpin123"
+    })
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 @pytest.fixture
-def test_treasurer(client):
-    """Create a test treasurer"""
-    import time
-    user_data = {
-        "display_name": "Test Treasurer", 
-        "email": f"test.treasurer.exports.{int(time.time()*1000)}@example.com",
+def test_treasurer(client, admin_bootstrap):
+    treasurer_pin = "treasurerPIN123"
+    payload = _wrapper(admin_bootstrap, {
+        "display_name": "Test Treasurer",
         "role": "treasurer",
         "is_active": True,
-        "pin": "treasurerPIN123"
-    }
-    response = client.post("/users/", json=user_data)
-    return response.json()
+        "pin": treasurer_pin
+    })
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
+    data = response.json()
+    data["_headers"] = {"x-actor-id": data["id"], "x-actor-pin": treasurer_pin}
+    return data
 
 
 @pytest.fixture
-def test_product(client):
-    """Create a test product"""
-    product_data = {
-        "name": "Coffee",
-        "price_cents": 150,
-        "is_active": True
-    }
-    response = client.post("/products/", json=product_data)
+def test_product(client, test_treasurer):
+    product_data = {"name": "Coffee", "price_cents": 150, "is_active": True}
+    response = client.post("/products/", json=product_data, headers=test_treasurer["_headers"])
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 @pytest.fixture
 def sample_consumption(client, test_user, test_product, test_treasurer):
-    """Create a sample consumption"""
-    consumption_data = {
-        "user_id": test_user["id"],
-        "product_id": test_product["id"],
-        "qty": 2
-    }
-    response = client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=consumption_data
-    )
+    consumption_data = {"user_id": test_user["id"], "product_id": test_product["id"], "qty": 2}
+    response = client.post("/consumptions/", json=consumption_data, headers=test_treasurer["_headers"])
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 @pytest.fixture
 def sample_money_move(client, test_user, test_treasurer):
-    """Create a sample money move"""
-    money_move_data = {
-        "type": "deposit",
-        "user_id": test_user["id"],
-        "amount_cents": 1000,
-        "note": "Test deposit"
-    }
-    response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=money_move_data
-    )
+    money_move_data = {"type": "deposit", "user_id": test_user["id"], "amount_cents": 1000, "note": "Test deposit"}
+    response = client.post("/money-moves/", json=money_move_data, headers=test_treasurer["_headers"])
+    assert response.status_code == 201, response.text
     return response.json()
 
 
@@ -132,10 +116,7 @@ def test_export_consumptions_with_limit(client, test_user, test_product, test_tr
             "product_id": test_product["id"],
             "qty": i + 1
         }
-        client.post(
-            f"/consumptions/?creator_id={test_treasurer['id']}", 
-            json=consumption_data
-        )
+        client.post("/consumptions/", json=consumption_data, headers=test_treasurer["_headers"])
     
     response = client.get("/exports/consumptions?limit=3")
     assert response.status_code == 200
@@ -205,14 +186,11 @@ def test_export_money_moves_confirmed(client, test_user, test_treasurer, test_tr
         "amount_cents": 1000,
         "note": "Test deposit"
     }
-    create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=money_move_data
-    )
+    create_response = client.post("/money-moves/", json=money_move_data, headers=test_treasurer["_headers"])
     money_move_id = create_response.json()["id"]
     
     # Confirm it
-    client.patch(f"/money-moves/{money_move_id}/confirm?confirmer_id={test_treasurer2['id']}")
+    client.patch(f"/money-moves/{money_move_id}/confirm", headers=test_treasurer2["_headers"])
     
     response = client.get("/exports/money-moves")
     assert response.status_code == 200
@@ -229,18 +207,19 @@ def test_export_money_moves_confirmed(client, test_user, test_treasurer, test_tr
 
 
 @pytest.fixture
-def test_treasurer2(client):
-    """Create a second test treasurer"""
-    import time
-    user_data = {
-        "display_name": "Test Treasurer 2", 
-        "email": f"test.treasurer2.exports.{int(time.time()*1000)}@example.com",
+def test_treasurer2(client, admin_bootstrap):
+    treasurer_pin = "treasurerPIN456"
+    payload = _wrapper(admin_bootstrap, {
+        "display_name": "Test Treasurer 2",
         "role": "treasurer",
         "is_active": True,
-        "pin": "treasurerPIN456"
-    }
-    response = client.post("/users/", json=user_data)
-    return response.json()
+        "pin": treasurer_pin
+    })
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
+    data = response.json()
+    data["_headers"] = {"x-actor-id": data["id"], "x-actor-pin": treasurer_pin}
+    return data
 
 
 def test_export_balances_empty(client):
@@ -271,12 +250,12 @@ def test_export_balances_with_users(client, test_user, test_treasurer):
     reader = csv.reader(io.StringIO(csv_content))
     rows = list(reader)
     
-    # Should have header + 2 data rows (2 users)
-    assert len(rows) == 3
+    # Should have header + bootstrap admin + 2 created users = 4 rows total
+    assert len(rows) == 4
     assert rows[0] == ['User', 'Balance (€)', 'Role', 'Active']
     
     # Check that we have both users in the export
-    user_names = [row[0] for row in rows[1:]]
+    user_names = [row[0] for row in rows[1:]]  # include bootstrap admin
     assert "Test User" in user_names
     assert "Test Treasurer" in user_names
     
@@ -286,7 +265,7 @@ def test_export_balances_with_users(client, test_user, test_treasurer):
         # Balance should be in format like "0.00"
         assert "." in row[1]
         # Role should be capitalized
-        assert row[2] in ["User", "Treasurer"]
+        assert row[2] in ["User", "Treasurer", "Admin"]
         # Active should be Yes/No
         assert row[3] in ["Yes", "No"]
 
@@ -300,14 +279,11 @@ def test_export_balances_with_transactions(client, test_user, test_treasurer, te
         "amount_cents": 1000,
         "note": "Test deposit"
     }
-    create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=money_move_data
-    )
+    create_response = client.post("/money-moves/", json=money_move_data, headers=test_treasurer["_headers"])
     money_move_id = create_response.json()["id"]
     
     # Confirm the deposit
-    client.patch(f"/money-moves/{money_move_id}/confirm?confirmer_id={test_treasurer2['id']}")
+    client.patch(f"/money-moves/{money_move_id}/confirm", headers=test_treasurer2["_headers"])
     
     response = client.get("/exports/balances")
     assert response.status_code == 200

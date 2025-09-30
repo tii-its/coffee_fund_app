@@ -1,5 +1,4 @@
 import pytest
-from uuid import uuid4
 
 
 def test_health_check(client):
@@ -18,48 +17,52 @@ def test_get_settings(client):
     assert "csv_export_limit" in data
 
 
-def test_create_user(client, sample_user_data):
-    """Test user creation (per-user PIN required)"""
-    response = client.post("/users/", json=sample_user_data)
-    assert response.status_code == 201
+def test_create_user(client, sample_user_data, admin_bootstrap):
+    """Test user creation via admin wrapper."""
+    payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": sample_user_data
+    }
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
     data = response.json()
     assert data["display_name"] == sample_user_data["display_name"]
     assert data["role"] == sample_user_data["role"]
     assert "id" in data
 
 
-def test_get_users(client, sample_user_data):
-    """Test getting users"""
-    # Create a user first
-    client.post("/users/", json=sample_user_data)
-
-    response = client.get("/users/")
-    assert response.status_code == 200
+def test_get_users(client, sample_user_data, admin_bootstrap):
+    """Test getting users (admin only)."""
+    create_payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": sample_user_data
+    }
+    client.post("/users/", json=create_payload)
+    response = client.get("/users/", headers={"x-actor-id": admin_bootstrap["id"], "x-actor-pin": admin_bootstrap["pin"]})
+    assert response.status_code == 200, response.text
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
+    assert isinstance(data, list) and len(data) > 0
 
 
-def test_create_product(client, sample_product_data):
-    """Test product creation"""
-    response = client.post("/products/", json=sample_product_data)
-    assert response.status_code == 201
+def test_create_product(client, sample_product_data, treasurer_context):
+    """Test product creation (treasurer headers required)."""
+    response = client.post("/products/", json=sample_product_data, headers=treasurer_context["headers"])
+    assert response.status_code == 201, response.text
     data = response.json()
     assert data["name"] == sample_product_data["name"]
     assert data["price_cents"] == sample_product_data["price_cents"]
     assert "id" in data
 
 
-def test_get_products(client, sample_product_data):
+def test_get_products(client, sample_product_data, treasurer_context):
     """Test getting products"""
-    # Create a product first
-    client.post("/products/", json=sample_product_data)
-    
+    client.post("/products/", json=sample_product_data, headers=treasurer_context["headers"])    
     response = client.get("/products/")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
+    assert isinstance(data, list) and len(data) > 0
 
 
 def test_get_users_above_threshold(client):
