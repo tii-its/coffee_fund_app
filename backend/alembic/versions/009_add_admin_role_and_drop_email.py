@@ -1,7 +1,7 @@
 """add admin role and drop email
 
 Revision ID: 009_add_admin_and_drop_email
-Revises: 001_initial_schema
+Revises: 008
 Create Date: 2025-09-30
 """
 
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '009_add_admin_and_drop_email'
-down_revision = '001_initial_schema'
+down_revision = '008'
 branch_labels = None
 depends_on = None
 
