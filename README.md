@@ -40,7 +40,7 @@ A team coffee fund management application with consumption tracking and cash mov
 - `make lint` - Run linting
 - `make migrate` - Run database migrations
 - `make clean` - Clean up containers and volumes
-   (All sensitive actions rely on per-user PINs; no global admin PIN reset target remains.)
+   (All sensitive actions rely on per-user PINs; no global/shared admin or treasurer PIN remains. Each privileged action asks for actor PIN again — no client-side PIN storage.)
 
 ## Tech Stack
 
@@ -93,6 +93,11 @@ If you prefer to run services locally without Docker, run the backend with the v
    ```bash
    # from repo root
    make test-backend
+   ```
+
+- Frontend unit tests directly inside running dev containers:
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml exec frontend npm test --silent -- --run
    ```
 
 - Frontend unit tests (Vitest) and E2E (Playwright) are configured in `frontend/`. See `frontend/package.json` and `frontend/vitest.config.ts` for details.

@@ -107,6 +107,10 @@ Makefile
 - **Migrations:** `make migrate` (upgrade), `make migrate-generate msg="description"`
 - **Linting:** `make lint` (check), `make lint-fix` (auto-fix)
 - **Logs/Shell:** `make logs-backend`, `make shell-backend`, `make shell-db`
+ - **Frontend tests (direct in running dev containers):**
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml exec frontend npm test --silent -- --run
+   ```
 
 ---
 
