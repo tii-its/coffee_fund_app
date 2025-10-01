@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { productsApi } from '@/api/client'
+import { productsApi, type ActorHeaders } from '@/api/client'
+import { usePerActionPin } from '@/hooks/usePerActionPin'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useAppStore } from '@/store'
 import { ProductModal, type ProductFormData } from '@/components/ProductModal'
@@ -13,6 +14,7 @@ const Products: React.FC = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentUser } = useAppStore()
+  const { requestPin, pinModal } = usePerActionPin()
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -25,8 +27,13 @@ const Products: React.FC = () => {
   })
 
   const createMutation = useMutation({
-    mutationFn: (product: ProductCreate) => 
-      productsApi.create(product, currentUser?.id),
+    mutationFn: async (product: ProductCreate) => {
+      if (!currentUser) throw new Error('No current user context')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return productsApi.create(product, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setIsCreateModalOpen(false)
@@ -39,8 +46,13 @@ const Products: React.FC = () => {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, product }: { id: string; product: ProductUpdate }) =>
-      productsApi.update(id, product, currentUser?.id),
+    mutationFn: async ({ id, product }: { id: string; product: ProductUpdate }) => {
+      if (!currentUser) throw new Error('No current user context')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return productsApi.update(id, product, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setIsEditModalOpen(false)
@@ -54,7 +66,13 @@ const Products: React.FC = () => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => productsApi.delete(id, currentUser?.id),
+    mutationFn: async (id: string) => {
+      if (!currentUser) throw new Error('No current user context')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return productsApi.delete(id, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setIsDeleteModalOpen(false)
@@ -68,8 +86,13 @@ const Products: React.FC = () => {
   })
 
   const restoreMutation = useMutation({
-    mutationFn: (id: string) => 
-      productsApi.update(id, { is_active: true }, currentUser?.id),
+    mutationFn: async (id: string) => {
+      if (!currentUser) throw new Error('No current user context')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return productsApi.update(id, { is_active: true }, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       // TODO: Add success toast notification
@@ -253,7 +276,8 @@ const Products: React.FC = () => {
         title={t('common.delete')}
         message={`Are you sure you want to deactivate "${selectedProduct?.name}"? This will make the product inactive but it can be restored later.`}
       />
-    </div>
+  {pinModal}
+  </div>
   )
 }
 

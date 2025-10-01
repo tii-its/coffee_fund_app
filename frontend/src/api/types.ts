@@ -1,7 +1,6 @@
 export interface User {
   id: string
   display_name: string
-  email: string
   qr_code?: string | null
   role: 'user' | 'treasurer'
   is_active: boolean
@@ -15,7 +14,6 @@ export interface UserBalance {
 
 export interface UserCreate {
   display_name: string
-  email: string
   qr_code?: string | null
   role: 'user' | 'treasurer'
   is_active?: boolean
@@ -24,7 +22,6 @@ export interface UserCreate {
 
 export interface UserUpdate {
   display_name?: string
-  email?: string
   qr_code?: string | null
   role?: 'user' | 'treasurer'
   is_active?: boolean

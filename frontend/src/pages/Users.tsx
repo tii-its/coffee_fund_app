@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatDate } from '@/lib/utils'
 import { usersApi } from '@/api/client'
+import { usePerActionPin } from '@/hooks/usePerActionPin'
 import type { User, UserUpdate, UserCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
@@ -15,6 +16,7 @@ const Users: React.FC = () => {
   
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const { requestPin, pinModal } = usePerActionPin()
   // future: if delete confirmation modal needed, reintroduce state
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
@@ -28,7 +30,11 @@ const Users: React.FC = () => {
   // Removed global adminPin usage
 
   const createUserMutation = useMutation({
-    mutationFn: (userCreate: UserCreate) => usersApi.create(userCreate),
+    mutationFn: async (userCreate: UserCreate) => {
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      return usersApi.create({ actor_id: actorId, actor_pin: pin, user: userCreate })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setCreateModalOpen(false)
@@ -39,8 +45,11 @@ const Users: React.FC = () => {
   })
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ userId, userUpdate }: { userId: string, userUpdate: UserUpdate }) =>
-      usersApi.update(userId, userUpdate),
+    mutationFn: async ({ userId, userUpdate }: { userId: string, userUpdate: UserUpdate }) => {
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      return usersApi.update(userId, userUpdate, { actorId, pin })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setEditModalOpen(false)
@@ -52,7 +61,11 @@ const Users: React.FC = () => {
   })
 
   const deleteUserMutation = useMutation({
-    mutationFn: ({ userId }: { userId: string }) => usersApi.delete(userId),
+    mutationFn: async ({ userId }: { userId: string }) => {
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      return usersApi.delete(userId, { actorId, pin })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setSelectedUser(null)
@@ -141,7 +154,7 @@ const Users: React.FC = () => {
                       <div className="text-2xl mr-3">👤</div>
                       <div>
                         <p className="font-medium text-gray-900">{user.display_name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        {/* email removed */}
                         {user.qr_code && (
                           <p className="text-sm text-gray-500">QR: {user.qr_code}</p>
                         )}
@@ -210,7 +223,8 @@ const Users: React.FC = () => {
       />
 
   {/* Deletion handled via inline confirm; future enhancement: per-action treasurer PIN */}
-    </div>
+  {pinModal}
+  </div>
   )
 }
 

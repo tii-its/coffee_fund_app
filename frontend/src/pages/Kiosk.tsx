@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi, productsApi, consumptionsApi } from '@/api/client'
+// Replacing promptForActor with modal approach
+import { usePerActionPin } from '@/hooks/usePerActionPin'
 import { formatCurrency } from '@/lib/utils'
 import UserPicker from '@/components/UserPicker'
 import ProductGrid from '@/components/ProductGrid'
@@ -35,12 +37,16 @@ const Kiosk: React.FC = () => {
   })
 
   // Create consumption mutation
+  const { requestPin, pinModal } = usePerActionPin()
   const createConsumption = useMutation({
-    mutationFn: (data: { user_id: string; product_id: string; qty: number; creator_id: string }) =>
-      consumptionsApi.create(
+    mutationFn: async (data: { user_id: string; product_id: string; qty: number }) => {
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      return consumptionsApi.create(
         { user_id: data.user_id, product_id: data.product_id, qty: data.qty },
-        data.creator_id
-      ),
+        { actorId, pin }
+      )
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userBalance'] })
       queryClient.invalidateQueries({ queryKey: ['consumptions'] })
@@ -64,15 +70,11 @@ const Kiosk: React.FC = () => {
   const handleConfirmPurchase = () => {
     if (selectedUser && selectedProduct) {
       // For kiosk mode, we'll use the first treasurer as creator (in real app, might be a kiosk user)
-      const treasurerUser = users.find(u => u.role === 'treasurer')
-      if (treasurerUser) {
-        createConsumption.mutate({
-          user_id: selectedUser.id,
-          product_id: selectedProduct.id,
-          qty: quantity,
-          creator_id: treasurerUser.id,
-        })
-      }
+      createConsumption.mutate({
+        user_id: selectedUser.id,
+        product_id: selectedProduct.id,
+        qty: quantity,
+      })
     }
   }
 
@@ -242,6 +244,7 @@ const Kiosk: React.FC = () => {
           <p className="text-gray-600">{t('common.loading')}...</p>
         </div>
       )}
+      {pinModal}
     </div>
   )
 }

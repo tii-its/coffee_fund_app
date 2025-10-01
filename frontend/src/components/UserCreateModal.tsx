@@ -18,7 +18,6 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
   const { t } = useTranslation()
   const [formData, setFormData] = useState<UserCreate>({
     display_name: '',
-    email: '',
     role: 'user',
     is_active: true,
     pin: '',
@@ -33,29 +32,13 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
       return
     }
     
-    if (!formData.email.trim()) {
-      setError(t('user.emailRequired'))
-      return
-    }
-    
-    // Email validation regex
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      setError(t('user.emailInvalid'))
-      return
-    }
+    // No email validation (email removed from model)
     
     try {
       setError('')
   await onSubmit({ ...formData })
       // Reset form
-      setFormData({
-        display_name: '',
-        email: '',
-        role: 'user',
-        is_active: true,
-        pin: '',
-      })
+      setFormData({ display_name: '', role: 'user', is_active: true, pin: '' })
       onClose()
     } catch (err: any) {
       setError(err.response?.data?.detail || t('common.error'))
@@ -64,13 +47,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
 
   const handleClose = () => {
     setError('')
-    setFormData({
-      display_name: '',
-      email: '',
-      role: 'user',
-      is_active: true,
-      pin: '',
-    })
+    setFormData({ display_name: '', role: 'user', is_active: true, pin: '' })
     onClose()
   }
 
@@ -103,20 +80,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
               />
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('user.email')} *
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={t('user.emailPlaceholder')}
-                disabled={isLoading}
-              />
-            </div>
+            {/* Email field removed */}
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
@@ -194,7 +158,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !formData.display_name.trim() || !formData.email.trim()}
+              disabled={isLoading || !formData.display_name.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.loading') : t('user.createUser')}

@@ -93,3 +93,7 @@ shell-db:
 	docker compose -f infra/docker-compose.dev.yml exec db psql -U coffee -d coffee
 
 # (Removed) Global PIN reset targets: PINs are per-user and managed via user endpoints.
+
+# Bootstrap initial admin (idempotent: only creates if none exists)
+bootstrap-admin:
+	docker compose -f infra/docker-compose.dev.yml exec backend python -m scripts.bootstrap_admin

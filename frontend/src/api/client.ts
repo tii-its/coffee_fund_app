@@ -2,7 +2,6 @@ import axios from 'axios'
 import type {
   User,
   UserBalance,
-  UserCreate,
   UserUpdate,
   Product,
   ProductCreate,
@@ -23,17 +22,28 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+// Per-action PIN model: no global actor storage; callers pass headers explicitly.
+export interface ActorHeaders { actorId: string; pin: string }
+function withActor(config: any, actor?: ActorHeaders) {
+  if (actor) {
+    config.headers = config.headers || {}
+    config.headers['x-actor-id'] = actor.actorId
+    config.headers['x-actor-pin'] = actor.pin
+  }
+  return config
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 })
+
+// No interceptor: headers must be provided per privileged call.
 
 // Error interceptor
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: any) => response,
+  (error: any) => {
     console.error('API Error:', error.response?.data || error.message)
     return Promise.reject(error)
   }
@@ -47,14 +57,15 @@ export const usersApi = {
   getById: (id: string) =>
     api.get<User>(`/users/${id}`),
   
-  create: (user: UserCreate, creator_id?: string) =>
-    api.post<User>('/users/', user, { params: { creator_id } }),
+  // User creation now requires wrapper with actor credentials; handled externally.
+  create: (payload: { actor_id: string; actor_pin: string; user: any }) =>
+    api.post<User>('/users/', payload),
   
-  update: (id: string, user: UserUpdate, actor_id?: string) =>
-    api.put<User>(`/users/${id}`, user, { params: { actor_id } }),
+  update: (id: string, user: UserUpdate, actor: ActorHeaders) =>
+    api.put<User>(`/users/${id}`, user, withActor({}, actor)),
   
-  delete: (id: string, actor_id?: string) =>
-    api.delete(`/users/${id}`, { params: { actor_id } }),
+  delete: (id: string, actor: ActorHeaders) =>
+    api.delete(`/users/${id}`, withActor({}, actor)),
   
   getBalance: (id: string) =>
     api.get<UserBalance>(`/users/${id}/balance`),
@@ -84,14 +95,14 @@ export const productsApi = {
   getById: (id: string) =>
     api.get<Product>(`/products/${id}`),
   
-  create: (product: ProductCreate, creator_id?: string) =>
-    api.post<Product>('/products/', product, { params: { creator_id } }),
+  create: (product: ProductCreate, actor: ActorHeaders) =>
+    api.post<Product>('/products/', product, withActor({}, actor)),
   
-  update: (id: string, product: ProductUpdate, actor_id?: string) =>
-    api.put<Product>(`/products/${id}`, product, { params: { actor_id } }),
+  update: (id: string, product: ProductUpdate, actor: ActorHeaders) =>
+    api.put<Product>(`/products/${id}`, product, withActor({}, actor)),
   
-  delete: (id: string, actor_id?: string) =>
-    api.delete(`/products/${id}`, { params: { actor_id } }),
+  delete: (id: string, actor: ActorHeaders) =>
+    api.delete(`/products/${id}`, withActor({}, actor)),
   
   getLatest: () =>
     api.get<Product | null>('/products/latest'),
@@ -114,10 +125,8 @@ export const consumptionsApi = {
   getById: (id: string) =>
     api.get<Consumption>(`/consumptions/${id}`),
   
-  create: (consumption: ConsumptionCreate, creator_id: string) =>
-    api.post<Consumption>('/consumptions/', consumption, {
-      params: { creator_id },
-    }),
+  create: (consumption: ConsumptionCreate, actor: ActorHeaders) =>
+    api.post<Consumption>('/consumptions/', consumption, withActor({}, actor)),
   
   getUserRecent: (user_id: string, limit?: number) =>
     api.get<Consumption[]>(`/consumptions/user/${user_id}/recent`, {
@@ -137,23 +146,17 @@ export const moneyMovesApi = {
   getById: (id: string) =>
     api.get<MoneyMove>(`/money-moves/${id}`),
   
-  create: (moneyMove: MoneyMoveCreate, creator_id: string) =>
-    api.post<MoneyMove>('/money-moves/', moneyMove, {
-      params: { creator_id },
-    }),
+  create: (moneyMove: MoneyMoveCreate, actor: ActorHeaders) =>
+    api.post<MoneyMove>('/money-moves/', moneyMove, withActor({}, actor)),
   
   getPending: (params?: { skip?: number; limit?: number }) =>
     api.get<MoneyMove[]>('/money-moves/pending', { params }),
   
-  confirm: (id: string, confirmer_id: string) =>
-    api.patch<MoneyMove>(`/money-moves/${id}/confirm`, null, {
-      params: { confirmer_id },
-    }),
+  confirm: (id: string, actor: ActorHeaders) =>
+    api.patch<MoneyMove>(`/money-moves/${id}/confirm`, null, withActor({}, actor)),
   
-  reject: (id: string, rejector_id: string) =>
-    api.patch<MoneyMove>(`/money-moves/${id}/reject`, null, {
-      params: { rejector_id },
-    }),
+  reject: (id: string, actor: ActorHeaders) =>
+    api.patch<MoneyMove>(`/money-moves/${id}/reject`, null, withActor({}, actor)),
 }
 
 // Audit API
@@ -208,23 +211,17 @@ export const stockPurchasesApi = {
   getById: (id: string) =>
     api.get<StockPurchaseWithCreator>(`/stock-purchases/${id}`),
   
-  create: (stockPurchase: StockPurchaseCreate, creator_id: string) =>
-    api.post<StockPurchase>('/stock-purchases/', stockPurchase, {
-      params: { creator_id },
-    }),
+  create: (stockPurchase: StockPurchaseCreate, actor: ActorHeaders) =>
+    api.post<StockPurchase>('/stock-purchases/', stockPurchase, withActor({}, actor)),
   
-  update: (id: string, stockPurchase: StockPurchaseUpdate, actor_id: string) =>
-    api.patch<StockPurchase>(`/stock-purchases/${id}`, stockPurchase, {
-      params: { actor_id },
-    }),
+  update: (id: string, stockPurchase: StockPurchaseUpdate, actor: ActorHeaders) =>
+    api.patch<StockPurchase>(`/stock-purchases/${id}`, stockPurchase, withActor({}, actor)),
   
-  processCashOut: (id: string, actor_id: string) =>
-    api.patch<StockPurchase>(`/stock-purchases/${id}/cash-out`, null, {
-      params: { actor_id },
-    }),
+  processCashOut: (id: string, actor: ActorHeaders) =>
+    api.patch<StockPurchase>(`/stock-purchases/${id}/cash-out`, null, withActor({}, actor)),
   
-  delete: (id: string, actor_id: string) =>
-    api.delete(`/stock-purchases/${id}`, { params: { actor_id } }),
+  delete: (id: string, actor: ActorHeaders) =>
+    api.delete(`/stock-purchases/${id}`, withActor({}, actor)),
 }
 
 export default api

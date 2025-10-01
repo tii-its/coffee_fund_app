@@ -84,7 +84,7 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
         {user && (
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <p className="font-medium">{user.display_name}</p>
-            <p className="text-sm text-gray-600">{user.email}</p>
+            {/* email removed */}
           </div>
         )}
         

@@ -48,10 +48,6 @@
     "displayName": "Anzeigename",
     "displayNamePlaceholder": "Anzeigename eingeben",
     "displayNameRequired": "Anzeigename ist erforderlich",
-    "email": "E-Mail",
-    "emailPlaceholder": "E-Mail-Adresse eingeben",
-    "emailRequired": "E-Mail-Adresse ist erforderlich",
-    "emailInvalid": "Ungültige E-Mail-Adresse",
     "role": "Rolle",
     "qrCode": "QR-Code",
     "balance": "Saldo",
@@ -150,7 +146,12 @@
   "treasurerPinHelp": "Die globale Admin-PIN wird für privilegierte Wartungsaktionen (Benutzerverwaltung) benötigt.",
   "requiredForTreasurer": "Admin-PIN für privilegierte Aktionen erforderlich",
   "treasurerAccess": "Admin-Zugang",
-  "treasurerAccessDescription": "Bitte geben Sie die Admin-PIN ein, um auf die Produktverwaltung zuzugreifen."
+    "treasurerAccessDescription": "Bitte geben Sie die Admin-PIN ein, um auf die Produktverwaltung zuzugreifen.",
+    "enterActorPin": "Akteurs-PIN eingeben",
+    "selectActor": "Akteur auswählen",
+    "actorRequired": "Akteursauswahl ist erforderlich",
+    "timeoutInfo": "PIN wird nicht gespeichert. Für jede Aktion erforderlich.",
+    "modalTitle": "Autorisierung erforderlich"
   },
   "auth": {
     "restricted": "Eingeschränkter Bereich",
