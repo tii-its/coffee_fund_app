@@ -34,6 +34,22 @@ def admin_actor(
     if not PinService.verify_user_pin(user.id, actor_pin, db):
         raise HTTPException(status_code=403, detail="Invalid admin PIN")
     return user
+
+
+def treasurer_actor(
+    actor_id: UUID = Header(..., alias="x-actor-id"),
+    actor_pin: str = Header(..., alias="x-actor-pin"),
+    db: Session = Depends(get_db)
+):
+    """Dependency ensuring the supplied actor is a treasurer and PIN is valid."""
+    user = db.query(User).filter(User.id == actor_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if user.role not in [UserRole.TREASURER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Actor is not a treasurer or admin")
+    if not PinService.verify_user_pin(user.id, actor_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    return user
 from app.core.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -100,9 +116,8 @@ def get_users(
     limit: int = 100,
     active_only: bool = True,
     db: Session = Depends(get_db),
-    _admin=Depends(admin_actor),
 ):
-    """Get all users"""
+    """Get all users (public read access for dashboard and kiosk functionality)"""
     query = db.query(User)
     if active_only:
         query = query.filter(User.is_active == True)

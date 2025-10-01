@@ -8,6 +8,7 @@ import type { User, UserUpdate, UserCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
 import UserCreateModal from '@/components/UserCreateModal'
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
 // usersApi already imported above
 
 const Users: React.FC = () => {
@@ -16,15 +17,15 @@ const Users: React.FC = () => {
   
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const { requestPin, pinModal } = usePerActionPin()
-  // future: if delete confirmation modal needed, reintroduce state
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   // Admin gating removed: treasurer role should gate access (handled by route protection outside this component)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: () => usersApi.getAll().then((res: AxiosResponse<User[]>) => res.data),
+    queryFn: () => usersApi.getAll({ active_only: false }).then((res: AxiosResponse<User[]>) => res.data),
   })
 
   // Removed global adminPin usage
@@ -85,17 +86,22 @@ const Users: React.FC = () => {
   }
 
   const handleDelete = (user: User) => {
-    // simple inline confirm for now
-    if (window.confirm('Delete user?')) {
-      deleteUserMutation.mutate({ userId: user.id })
-    }
+    setSelectedUser(user)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!selectedUser) return
+    deleteUserMutation.mutate({ userId: selectedUser.id })
+    setDeleteModalOpen(false)
+    setSelectedUser(null)
   }
 
   const handleCreateSubmit = async (userCreate: UserCreate) => {
     createUserMutation.mutate(userCreate)
   }
 
-  const handleEditSubmit = async (userUpdate: UserUpdate, _pin: string) => {
+  const handleEditSubmit = async (userUpdate: UserUpdate) => {
     if (!selectedUser) return
     updateUserMutation.mutate({ userId: selectedUser.id, userUpdate })
   }
@@ -163,6 +169,7 @@ const Users: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <span className={`badge ${
+                      user.role === 'admin' ? 'badge-danger' : 
                       user.role === 'treasurer' ? 'badge-info' : 'badge-success'
                     }`}>
                       {t(`user.${user.role}Role`)}
@@ -185,9 +192,6 @@ const Users: React.FC = () => {
                         className="btn btn-outline btn-sm hover:bg-blue-50"
                       >
                         {t('common.edit')}
-                      </button>
-                      <button className="btn btn-outline btn-sm">
-                        QR
                       </button>
                       <button 
                         onClick={() => handleDelete(user)}
@@ -222,8 +226,18 @@ const Users: React.FC = () => {
         isLoading={updateUserMutation.isPending}
       />
 
-  {/* Deletion handled via inline confirm; future enhancement: per-action treasurer PIN */}
-  {pinModal}
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setSelectedUser(null)
+        }}
+        onConfirm={handleDeleteConfirm}
+        title={t('user.deleteUser')}
+        message={selectedUser ? t('user.deleteConfirmation', { name: selectedUser.display_name }) : ''}
+      />
+
+      {pinModal}
   </div>
   )
 }

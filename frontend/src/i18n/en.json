@@ -53,6 +53,7 @@
     "balance": "Balance",
     "userRole": "User",
     "treasurerRole": "Treasurer",
+    "adminRole": "Admin",
     "createUser": "Create User",
     "editUser": "Edit User",
     "deleteUser": "Delete User",

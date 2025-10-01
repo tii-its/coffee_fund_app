@@ -20,7 +20,7 @@ import type {
   StockPurchaseUpdate,
 } from './types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // Per-action PIN model: no global actor storage; callers pass headers explicitly.
 export interface ActorHeaders { actorId: string; pin: string }

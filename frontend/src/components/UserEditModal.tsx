@@ -6,7 +6,7 @@ interface UserEditModalProps {
   isOpen: boolean
   onClose: () => void
   user: User | null
-  onSubmit: (userUpdate: UserUpdate, pin: string) => void | Promise<void>
+  onSubmit: (userUpdate: UserUpdate) => void | Promise<void>
   isLoading?: boolean
 }
 
@@ -19,7 +19,6 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [formData, setFormData] = useState<UserUpdate>({})
-  const [pin, setPin] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -36,15 +35,10 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pin.trim()) {
-      setError(t('pin.required'))
-      return
-    }
     
     try {
       setError('')
-      await onSubmit(formData, pin)
-      setPin('')
+      await onSubmit(formData)
       onClose()
     } catch (err: any) {
       setError(err.response?.data?.detail || t('common.error'))
@@ -52,7 +46,6 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   }
 
   const handleClose = () => {
-    setPin('')
     setError('')
     setFormData({})
     onClose()
@@ -151,7 +144,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !pin.trim()}
+              disabled={isLoading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.loading') : t('common.save')}

@@ -53,6 +53,7 @@
     "balance": "Saldo",
     "userRole": "Benutzer",
     "treasurerRole": "Verwalter",
+    "adminRole": "Admin",
     "createUser": "Benutzer erstellen",
     "editUser": "Benutzer bearbeiten",
     "deleteUser": "Benutzer löschen",
