@@ -68,15 +68,11 @@ def test_delete_user_success_with_valid_admin_credentials(client, test_user, adm
     # Delete user with valid admin credentials
     response = client.delete(f"/users/{user_id}", headers=admin_headers)
     assert response.status_code == 200
-    assert response.json()["message"] == "User deleted successfully"
+    assert response.json()["message"] == "User permanently deleted"
     
-    # Verify user is soft deleted (is_active = False)
-    response = client.get("/users/", params={"active_only": False})
-    assert response.status_code == 200
-    users_after = response.json()
-    deleted_user = next((u for u in users_after if u["id"] == user_id), None)
-    assert deleted_user is not None, "User should still exist in database"
-    assert deleted_user["is_active"] is False, "User should be marked as inactive"
+    # Verify user is fully removed
+    response = client.get(f"/users/{user_id}", headers=admin_headers)
+    assert response.status_code == 404
 
 
 def test_delete_nonexistent_user(client, admin_headers):
@@ -108,7 +104,7 @@ def test_delete_user_creates_audit_entry(client, test_user, admin_bootstrap, adm
     assert delete_entry["actor_id"] == admin_id
     assert delete_entry["entity"] == "user"
     assert delete_entry["entity_id"] == user_id
-    assert delete_entry["meta_json"]["soft_delete"] is True
+    assert delete_entry["meta_json"]["hard_delete"] is True
 
 
 def test_delete_user_multiple_users_isolation(client, admin_bootstrap, admin_headers):
@@ -147,19 +143,12 @@ def test_delete_user_multiple_users_isolation(client, admin_bootstrap, admin_hea
     response = client.delete(f"/users/{user1_id}", headers=admin_headers)
     assert response.status_code == 200
     
-    # Verify second user is still active
-    response = client.get("/users/")
+    # Verify second user still retrievable
+    response = client.get(f"/users/{user2_id}", headers=admin_headers)
     assert response.status_code == 200
-    active_users = response.json()
-    user2_still_active = any(u["id"] == user2_id and u["is_active"] for u in active_users)
-    assert user2_still_active, "Second user should remain active"
-    
-    # Verify first user is inactive
-    response = client.get("/users/", params={"active_only": False})
-    assert response.status_code == 200
-    all_users = response.json()
-    user1_inactive = any(u["id"] == user1_id and not u["is_active"] for u in all_users)
-    assert user1_inactive, "First user should be inactive"
+    # First user should 404
+    response = client.get(f"/users/{user1_id}", headers=admin_headers)
+    assert response.status_code == 404
 
 
 def test_admin_cannot_delete_themselves(client, admin_bootstrap, admin_headers):
@@ -170,13 +159,5 @@ def test_admin_cannot_delete_themselves(client, admin_bootstrap, admin_headers):
     response = client.delete(f"/users/{admin_id}", headers=admin_headers)
     # This should either succeed (soft delete) or fail with a specific error
     # For now, let's test that the operation is handled gracefully
-    assert response.status_code in [200, 400, 403]
-    
-    if response.status_code == 200:
-        # If allowed, verify admin is soft deleted but system still functions
-        response = client.get("/users/", params={"active_only": False})
-        assert response.status_code == 200
-    elif response.status_code in [400, 403]:
-        # If not allowed, verify appropriate error message
-        assert "cannot delete" in response.json()["detail"].lower() or \
-               "not allowed" in response.json()["detail"].lower()
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cannot delete the last remaining admin user"

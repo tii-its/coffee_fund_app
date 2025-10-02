@@ -1,7 +1,12 @@
 import React from 'react'
 import PerActionPinModal from '@/components/PerActionPinModal'
 
-export function usePerActionPin() {
+interface UsePerActionPinOptions {
+  requiredRole?: 'treasurer' | 'admin' | 'treasurer-or-admin'
+  title?: string
+}
+
+export function usePerActionPin(options: UsePerActionPinOptions = {}) {
   const [open, setOpen] = React.useState(false)
   const resolverRef = React.useRef<((value: { actorId: string; pin: string } | PromiseLike<{ actorId: string; pin: string }>) => void) | null>(null)
 
@@ -22,6 +27,8 @@ export function usePerActionPin() {
       isOpen={open}
       onClose={() => { setOpen(false); if (resolverRef.current) { resolverRef.current({ actorId: '', pin: '' }) } }}
       onSubmit={(actorId, pin) => { handleSubmit(actorId, pin); setOpen(false) }}
+      requiredRole={options.requiredRole}
+      title={options.title}
     />
   )
 

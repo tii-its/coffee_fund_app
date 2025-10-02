@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models import User
+from app.models import User, Consumption, MoneyMove, Audit
 from app.schemas import (
     UserBalance,
     UserCreate,
@@ -183,29 +183,55 @@ def delete_user(
     db: Session = Depends(get_db),
     admin=Depends(admin_actor)
 ):
-    """Soft delete a user.
+    """Hard delete a user (admin only).
 
-    NOTE: Actor authorization & PIN verification will be added later.
+    Permanently removes the user row. If the user has related domain records
+    (consumptions, money moves, audit entries) deletion is blocked to preserve
+    referential integrity. Caller must first handle or archive those records.
+    The special admin performing the action cannot delete themselves if they
+    are the only remaining admin (safety guard).
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.is_active = False
+    # Prevent deleting the last remaining admin to avoid lock-out
+    if user.role == UserRole.ADMIN:
+        remaining_admins = db.query(User).filter(User.role == UserRole.ADMIN, User.id != user.id).count()
+        if remaining_admins == 0:
+            raise HTTPException(status_code=400, detail="Cannot delete the last remaining admin user")
+
+    # Check for dependent records; block deletion if any exist
+    has_consumptions = db.query(Consumption).filter(Consumption.user_id == user.id).first() is not None
+    has_created_consumptions = db.query(Consumption).filter(Consumption.created_by == user.id).first() is not None
+    has_money_moves = db.query(MoneyMove).filter(MoneyMove.user_id == user.id).first() is not None
+    has_created_money_moves = db.query(MoneyMove).filter(MoneyMove.created_by == user.id).first() is not None
+    has_confirmed_money_moves = db.query(MoneyMove).filter(MoneyMove.confirmed_by == user.id).first() is not None
+    has_audit_entries = db.query(Audit).filter(Audit.actor_id == user.id).first() is not None
+
+    if any([
+        has_consumptions,
+        has_created_consumptions,
+        has_money_moves,
+        has_created_money_moves,
+        has_confirmed_money_moves,
+        has_audit_entries,
+    ]):
+        raise HTTPException(status_code=409, detail="Cannot delete user with related records")
+
+    db.delete(user)
     db.commit()
-    db.refresh(user)
 
-    if admin:
-        AuditService.log_action(
-            db=db,
-            actor_id=admin.id,
-            action="delete",
-            entity="user",
-            entity_id=user.id,
-            meta_data={"display_name": user.display_name, "soft_delete": True}
-        )
+    AuditService.log_action(
+        db=db,
+        actor_id=admin.id,
+        action="delete",
+        entity="user",
+        entity_id=user_id,
+        meta_data={"display_name": user.display_name, "hard_delete": True}
+    )
 
-    return {"message": "User deleted successfully"}
+    return {"message": "User permanently deleted"}
 
 
 # Removed legacy global /verify-pin endpoint (deprecated)

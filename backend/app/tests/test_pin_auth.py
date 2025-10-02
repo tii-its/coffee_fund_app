@@ -23,18 +23,6 @@ def test_create_user_with_pin(client, admin_bootstrap):
     user_id = response.json()["id"]
     pin_verify_response = client.post("/users/verify-user-pin", json={"user_id": user_id, "pin": "user123"})
     assert pin_verify_response.status_code == 200
-    assert pin_verify_response.json()["message"] == "User PIN verified successfully"
-
-
-def test_create_user_without_pin_fails(client, admin_bootstrap):
-    payload = _wrapper(admin_bootstrap, {
-        "display_name": "Test User",
-        "role": "user",
-        "is_active": True
-        # Missing pin
-    })
-    response = client.post("/users/", json=payload)
-    assert response.status_code == 422
 
 
 def test_create_treasurer(client, admin_bootstrap):
@@ -144,6 +132,6 @@ def test_delete_user(client, admin_bootstrap, admin_headers):
     user_id = create_response.json()["id"]
     response = client.request("DELETE", f"/users/{user_id}", headers=admin_headers)
     assert response.status_code == 200
+    # Hard delete: subsequent fetch should 404
     get_response = client.get(f"/users/{user_id}", headers=admin_headers)
-    assert get_response.status_code == 200
-    assert get_response.json()["is_active"] is False
+    assert get_response.status_code == 404

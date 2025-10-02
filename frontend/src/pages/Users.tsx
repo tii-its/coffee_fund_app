@@ -22,6 +22,12 @@ const Users: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   // Admin gating removed: treasurer role should gate access (handled by route protection outside this component)
+  
+  // User creation requires admin role specifically
+  const { requestPin: requestAdminPin, pinModal: adminPinModal } = usePerActionPin({ 
+    requiredRole: 'admin',
+    title: 'Admin PIN Required for User Creation'
+  })
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -32,8 +38,8 @@ const Users: React.FC = () => {
 
   const createUserMutation = useMutation({
     mutationFn: async (userCreate: UserCreate) => {
-      const { actorId, pin } = await requestPin()
-      if (!actorId || !pin) throw new Error('PIN required')
+      const { actorId, pin } = await requestAdminPin()
+      if (!actorId || !pin) throw new Error('Admin PIN required')
       return usersApi.create({ actor_id: actorId, actor_pin: pin, user: userCreate })
     },
     onSuccess: () => {
@@ -238,6 +244,7 @@ const Users: React.FC = () => {
       />
 
       {pinModal}
+      {adminPinModal}
   </div>
   )
 }
