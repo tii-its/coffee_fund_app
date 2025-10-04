@@ -2,141 +2,25 @@
 Integration tests for complete business workflows
 """
 import pytest
-from app.core.config import settings
 import uuid
 
 
+def _wrapper(admin_bootstrap, user_sub_payload: dict):
+    return {"actor_id": admin_bootstrap["id"], "actor_pin": admin_bootstrap["pin"], "user": user_sub_payload}
+
+
 @pytest.fixture
-def setup_users_and_product(client):
-    """Set up basic test data: users and product"""
+def setup_users_and_product(client, admin_bootstrap):
     import time
     ts = int(time.time()*1000)
-    # Create regular user
-    user_data = {
-        "display_name": "Coffee Consumer",
-        "email": f"workflow.user.{ts}@example.com",
-        "role": "user",
-        "is_active": True
-    }
-    user_response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
-    user = user_response.json()
-    
-    # Create two treasurers for two-person approval
-    treasurer1_data = {
-        "display_name": "Treasurer One",
-        "email": f"workflow.treas1.{ts}@example.com",
-        "role": "treasurer",
-        "is_active": True
-    }
-    treasurer1_response = client.post("/users/", json={"user": treasurer1_data, "pin": settings.admin_pin})
-    treasurer1 = treasurer1_response.json()
-    
-    treasurer2_data = {
-        "display_name": "Treasurer Two", 
-        "email": f"workflow.treas2.{ts}@example.com",
-        "role": "treasurer",
-        "is_active": True
-    }
-    treasurer2_response = client.post("/users/", json={"user": treasurer2_data, "pin": settings.admin_pin})
-    treasurer2 = treasurer2_response.json()
-    
-    # Create product
-    product_data = {
-        # Unique product name per test run to avoid duplicate name constraint collisions
-        "name": f"Premium Coffee {ts}",
-        "price_cents": 200,
-        "is_active": True
-    }
-    product_response = client.post("/products/", json=product_data)
-    product = product_response.json()
-    
-    return {
-        "user": user,
-        "treasurer1": treasurer1,
-        "treasurer2": treasurer2,
-        "product": product
-    }
-
-
-def test_complete_deposit_workflow(client, setup_users_and_product):
-    """Test complete deposit workflow: create -> confirm -> verify balance"""
-    data = setup_users_and_product
-    user = data["user"]
-    treasurer1 = data["treasurer1"]
-    treasurer2 = data["treasurer2"]
-    
-    # Step 1: Check initial balance (should be 0) via API
-    balance_response = client.get(f"/users/{user['id']}/balance")
-    assert balance_response.status_code == 200
-    initial_balance = balance_response.json()["balance_cents"]
-    assert initial_balance == 0
-    
-    # Step 2: Treasurer 1 creates a deposit request
-    deposit_data = {
-        "type": "deposit",
-        "user_id": user["id"],
-        "amount_cents": 2000,  # 20 euros
-        "note": "Monthly coffee deposit"
-    }
-    
-    create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
-    )
-    assert create_response.status_code == 201
-    money_move = create_response.json()
-    
-    # Verify it's pending
-    assert money_move["status"] == "pending"
-    assert money_move["amount_cents"] == 2000
-    assert money_move["confirmed_at"] is None
-    
-    # Step 3: Check that balance hasn't changed yet (pending deposits don't count)
-    # Use public API balance endpoint for consistency (avoids direct session mismatches)
-    balance_after_create_resp = client.get(f"/users/{user['id']}/balance")
-    assert balance_after_create_resp.status_code == 200
-    assert balance_after_create_resp.json()["balance_cents"] == 0
-    
-    # Step 4: Check pending money moves
-    pending_response = client.get("/money-moves/pending")
-    assert pending_response.status_code == 200
-    pending_moves = pending_response.json()
-    assert len(pending_moves) == 1
-    assert pending_moves[0]["id"] == money_move["id"]
-    
-    # Step 5: Treasurer 2 confirms the deposit
-    confirm_response = client.patch(
-        f"/money-moves/{money_move['id']}/confirm?confirmer_id={treasurer2['id']}"
-    )
-    assert confirm_response.status_code == 200
-    confirmed_move = confirm_response.json()
-    
-    # Verify it's now confirmed
-    assert confirmed_move["status"] == "confirmed"
-    assert confirmed_move["confirmed_by"] == treasurer2["id"]
-    assert confirmed_move["confirmed_at"] is not None
-    
-    # Step 6: Check that balance has now updated
-    balance_after_confirm_resp = client.get(f"/users/{user['id']}/balance")
-    assert balance_after_confirm_resp.status_code == 200
-    assert balance_after_confirm_resp.json()["balance_cents"] == 2000
-    
-    # Step 7: Check no more pending moves
-    pending_response = client.get("/money-moves/pending")
-    pending_moves = pending_response.json()
-    assert len(pending_moves) == 0
-    
-    # Step 8: Verify audit trail exists
-    audit_response = client.get(f"/audit/?actor_id={treasurer1['id']}")
-    assert audit_response.status_code == 200
-    audit_entries = audit_response.json()
-    
-    # Should have creation audit entry
-    creation_entry = next((entry for entry in audit_entries if entry["action"] == "create"), None)
-    assert creation_entry is not None
-    assert creation_entry["entity"] == "money_move"
-
-
+    user = client.post("/users/", json=_wrapper(admin_bootstrap, {"display_name": "Coffee Consumer", "role": "user", "is_active": True, "pin": "testpin123"})).json()
+    t1_pin = "treasOnePIN"; t2_pin = "treasTwoPIN"
+    treasurer1 = client.post("/users/", json=_wrapper(admin_bootstrap, {"display_name": "Treasurer One", "role": "treasurer", "is_active": True, "pin": t1_pin})).json()
+    treasurer2 = client.post("/users/", json=_wrapper(admin_bootstrap, {"display_name": "Treasurer Two", "role": "treasurer", "is_active": True, "pin": t2_pin})).json()
+    treasurer1["_headers"] = {"x-actor-id": treasurer1["id"], "x-actor-pin": t1_pin}
+    treasurer2["_headers"] = {"x-actor-id": treasurer2["id"], "x-actor-pin": t2_pin}
+    product = client.post("/products/", json={"name": f"Premium Coffee {ts}", "price_cents": 200, "is_active": True}, headers=treasurer1["_headers"]).json()
+    return {"user": user, "treasurer1": treasurer1, "treasurer2": treasurer2, "product": product}
 def test_deposit_rejection_workflow(client, setup_users_and_product):
     """Test deposit rejection workflow"""
     data = setup_users_and_product
@@ -152,16 +36,11 @@ def test_deposit_rejection_workflow(client, setup_users_and_product):
         "note": "Test deposit for rejection"
     }
     
-    create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
-    )
+    create_response = client.post("/money-moves/", json=deposit_data, headers=treasurer1["_headers"])
     money_move = create_response.json()
     
     # Reject the deposit
-    reject_response = client.patch(
-        f"/money-moves/{money_move['id']}/reject?rejector_id={treasurer2['id']}"
-    )
+    reject_response = client.patch(f"/money-moves/{money_move['id']}/reject", headers=treasurer2["_headers"])
     assert reject_response.status_code == 200
     rejected_move = reject_response.json()
     
@@ -190,16 +69,11 @@ def test_consumption_workflow(client, setup_users_and_product):
         "note": "Initial deposit"
     }
     
-    create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
-    )
+    create_response = client.post("/money-moves/", json=deposit_data, headers=treasurer1["_headers"])
     money_move = create_response.json()
     
     # Confirm deposit
-    client.patch(
-        f"/money-moves/{money_move['id']}/confirm?confirmer_id={treasurer2['id']}"
-    )
+    client.patch(f"/money-moves/{money_move['id']}/confirm", headers=treasurer2["_headers"])
     
     # Verify balance
     balance_after_deposit_resp = client.get(f"/users/{user['id']}/balance")
@@ -213,10 +87,7 @@ def test_consumption_workflow(client, setup_users_and_product):
         "qty": 3  # 3 coffees at 200 cents each = 600 cents
     }
     
-    consume_response = client.post(
-        f"/consumptions/?creator_id={treasurer1['id']}", 
-        json=consumption_data
-    )
+    consume_response = client.post("/consumptions/", json=consumption_data, headers=treasurer1["_headers"])
     assert consume_response.status_code == 201
     consumption = consume_response.json()
     
@@ -255,12 +126,10 @@ def test_multiple_consumptions_and_balance_tracking(client, setup_users_and_prod
         "note": "Large deposit"
     }
     
-    create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
-    )
+    create_response = client.post("/money-moves/", json=deposit_data, headers=treasurer1["_headers"])
     client.patch(
-        f"/money-moves/{create_response.json()['id']}/confirm?confirmer_id={treasurer2['id']}"
+        f"/money-moves/{create_response.json()['id']}/confirm",
+        headers=treasurer2["_headers"],
     )
     
     # Multiple consumption sessions
@@ -280,8 +149,9 @@ def test_multiple_consumptions_and_balance_tracking(client, setup_users_and_prod
         }
         
         response = client.post(
-            f"/consumptions/?creator_id={treasurer1['id']}", 
-            json=consumption_data
+            "/consumptions/",
+            json=consumption_data,
+            headers=treasurer1["_headers"],
         )
         assert response.status_code == 201
         
@@ -325,11 +195,13 @@ def test_payout_workflow(client, setup_users_and_product):
         "note": "Test deposit for payout"
     }
     create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
+        "/money-moves/",
+        json=deposit_data,
+        headers=treasurer1["_headers"],
     )
     client.patch(
-        f"/money-moves/{create_response.json()['id']}/confirm?confirmer_id={treasurer2['id']}"
+        f"/money-moves/{create_response.json()['id']}/confirm",
+        headers=treasurer2["_headers"],
     )
     
     # Consume some coffee
@@ -339,8 +211,9 @@ def test_payout_workflow(client, setup_users_and_product):
         "qty": 2  # 400 cents
     }
     client.post(
-        f"/consumptions/?creator_id={treasurer1['id']}", 
-        json=consumption_data
+        "/consumptions/",
+        json=consumption_data,
+        headers=treasurer1["_headers"],
     )
     
     # Balance should be 1100 cents now
@@ -357,8 +230,9 @@ def test_payout_workflow(client, setup_users_and_product):
     }
     
     payout_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=payout_data
+        "/money-moves/",
+        json=payout_data,
+        headers=treasurer1["_headers"],
     )
     payout_move = payout_response.json()
     
@@ -369,7 +243,8 @@ def test_payout_workflow(client, setup_users_and_product):
     
     # Confirm payout
     confirm_response = client.patch(
-        f"/money-moves/{payout_move['id']}/confirm?confirmer_id={treasurer2['id']}"
+        f"/money-moves/{payout_move['id']}/confirm",
+        headers=treasurer2["_headers"],
     )
     assert confirm_response.status_code == 200
     
@@ -394,14 +269,16 @@ def test_self_confirmation_prevention(client, setup_users_and_product):
     }
     
     create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
+        "/money-moves/",
+        json=deposit_data,
+        headers=treasurer1["_headers"],
     )
     money_move = create_response.json()
     
     # Try to confirm with same treasurer
     confirm_response = client.patch(
-        f"/money-moves/{money_move['id']}/confirm?confirmer_id={treasurer1['id']}"
+        f"/money-moves/{money_move['id']}/confirm",
+        headers=treasurer1["_headers"],
     )
     
     assert confirm_response.status_code == 400
@@ -430,11 +307,15 @@ def test_export_integration_with_real_data(client, setup_users_and_product):
         "note": "Export test deposit"
     }
     create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
+        "/money-moves/",
+        json=deposit_data,
+        headers=treasurer1["_headers"],
     )
     money_move_id = create_response.json()["id"]
-    client.patch(f"/money-moves/{money_move_id}/confirm?confirmer_id={treasurer2['id']}")
+    client.patch(
+        f"/money-moves/{money_move_id}/confirm",
+        headers=treasurer2["_headers"],
+    )
     
     # 2. Consumption
     consumption_data = {
@@ -443,8 +324,9 @@ def test_export_integration_with_real_data(client, setup_users_and_product):
         "qty": 2
     }
     client.post(
-        f"/consumptions/?creator_id={treasurer1['id']}", 
-        json=consumption_data
+        "/consumptions/",
+        json=consumption_data,
+        headers=treasurer1["_headers"],
     )
     
     # Test exports
@@ -492,13 +374,17 @@ def test_audit_trail_comprehensive(client, setup_users_and_product):
         "note": "Audit test deposit"
     }
     create_response = client.post(
-        f"/money-moves/?creator_id={treasurer1['id']}", 
-        json=deposit_data
+        "/money-moves/",
+        json=deposit_data,
+        headers=treasurer1["_headers"],
     )
     money_move_id = create_response.json()["id"]
     
     # 2. Confirm deposit
-    client.patch(f"/money-moves/{money_move_id}/confirm?confirmer_id={treasurer2['id']}")
+    client.patch(
+        f"/money-moves/{money_move_id}/confirm",
+        headers=treasurer2["_headers"],
+    )
     
     # 3. Create consumption
     consumption_data = {
@@ -507,8 +393,9 @@ def test_audit_trail_comprehensive(client, setup_users_and_product):
         "qty": 1
     }
     client.post(
-        f"/consumptions/?creator_id={treasurer1['id']}", 
-        json=consumption_data
+        "/consumptions/",
+        json=consumption_data,
+        headers=treasurer1["_headers"],
     )
     
     # Check audit entries

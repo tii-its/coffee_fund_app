@@ -4,12 +4,13 @@ A team coffee fund management application with consumption tracking and cash mov
 
 ## Features
 
-- Track product consumption for team members
-- Manage cash deposits and payouts with two-person confirmation
-- Multi-user concurrent support (kiosk, desktop, mobile)
-- Internationalization support (German/English)
-- Role-based access (User/Treasurer) with a separate global Admin PIN (not a user account) for privileged actions
-- Audit logging for all actions
+ Track product consumption for team members
+ Manage cash deposits and payouts with two-person confirmation
+ Multi-user concurrent support (kiosk, desktop, mobile)
+ Internationalization support (German/English)
+ Role-based access (User/Treasurer) — every user (including treasurers) has their own mandatory PIN (no global/shared PIN)
+ Audit logging for all actions
+- User hard deletion (admin-only, permanently removes user if no related records; last remaining admin cannot be deleted)
 
 ## Quick Start
 
@@ -40,7 +41,7 @@ A team coffee fund management application with consumption tracking and cash mov
 - `make lint` - Run linting
 - `make migrate` - Run database migrations
 - `make clean` - Clean up containers and volumes
-- `make admin-pin-reset PIN=9999` - Set or reset the global admin PIN (replaces deprecated treasurer pin)
+   (All sensitive actions rely on per-user PINs; no global/shared admin or treasurer PIN remains. Each privileged action asks for actor PIN again — no client-side PIN storage.)
 
 ## Tech Stack
 
@@ -93,6 +94,11 @@ If you prefer to run services locally without Docker, run the backend with the v
    ```bash
    # from repo root
    make test-backend
+   ```
+
+- Frontend unit tests directly inside running dev containers:
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml exec frontend npm test --silent -- --run
    ```
 
 - Frontend unit tests (Vitest) and E2E (Playwright) are configured in `frontend/`. See `frontend/package.json` and `frontend/vitest.config.ts` for details.

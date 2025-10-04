@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { usersApi, moneyMovesApi, exportsApi, stockPurchasesApi } from '@/api/client'
+import { usersApi, moneyMovesApi, exportsApi, stockPurchasesApi, type ActorHeaders } from '@/api/client'
+import { usePerActionPin } from '@/hooks/usePerActionPin'
 import { useAppStore } from '@/store'
 import { formatCurrency, formatDate, downloadBlob } from '@/lib/utils'
 import StockPurchaseForm from '@/components/StockPurchaseForm'
@@ -12,6 +13,7 @@ const Treasurer: React.FC = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentUser } = useAppStore()
+  const { requestPin, pinModal } = usePerActionPin()
   
   const [showStockForm, setShowStockForm] = useState(false)
   const [showPinChangeModal, setShowPinChangeModal] = useState(false)
@@ -36,8 +38,13 @@ const Treasurer: React.FC = () => {
 
   // Money move mutations
   const confirmMoneyMoveMutation = useMutation({
-    mutationFn: ({ id, confirmer_id }: { id: string; confirmer_id: string }) =>
-      moneyMovesApi.confirm(id, confirmer_id),
+    mutationFn: async ({ id }: { id: string }) => {
+      if (!currentUser) throw new Error('No current user')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return moneyMovesApi.confirm(id, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
       queryClient.invalidateQueries({ queryKey: ['allBalances'] })
@@ -45,15 +52,25 @@ const Treasurer: React.FC = () => {
   })
 
   const rejectMoneyMoveMutation = useMutation({
-    mutationFn: ({ id, rejector_id }: { id: string; rejector_id: string }) =>
-      moneyMovesApi.reject(id, rejector_id),
+    mutationFn: async ({ id }: { id: string }) => {
+      if (!currentUser) throw new Error('No current user')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return moneyMovesApi.reject(id, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
     },
   })
   const createStockPurchaseMutation = useMutation({
-    mutationFn: (stockPurchase: StockPurchaseCreate) => 
-      stockPurchasesApi.create(stockPurchase, currentUser?.id || ''),
+    mutationFn: async (stockPurchase: StockPurchaseCreate) => {
+      if (!currentUser) throw new Error('No current user')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return stockPurchasesApi.create(stockPurchase, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stockPurchases'] })
       setShowStockForm(false)
@@ -61,8 +78,13 @@ const Treasurer: React.FC = () => {
   })
 
   const processCashOutMutation = useMutation({
-    mutationFn: (id: string) => 
-      stockPurchasesApi.processCashOut(id, currentUser?.id || ''),
+    mutationFn: async (id: string) => {
+      if (!currentUser) throw new Error('No current user')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      const actor: ActorHeaders = { actorId, pin }
+      return stockPurchasesApi.processCashOut(id, actor)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stockPurchases'] })
     },
@@ -104,7 +126,7 @@ const Treasurer: React.FC = () => {
   const handleConfirmMoneyMove = async (moveId: string) => {
     if (!currentUser?.id) return
     try {
-      await confirmMoneyMoveMutation.mutateAsync({ id: moveId, confirmer_id: currentUser.id })
+  await confirmMoneyMoveMutation.mutateAsync({ id: moveId })
     } catch (error) {
       console.error('Failed to confirm money move:', error)
     }
@@ -114,7 +136,7 @@ const Treasurer: React.FC = () => {
     if (!currentUser?.id) return
     if (window.confirm(t('moneyMove.confirmReject'))) {
       try {
-        await rejectMoneyMoveMutation.mutateAsync({ id: moveId, rejector_id: currentUser.id })
+  await rejectMoneyMoveMutation.mutateAsync({ id: moveId })
       } catch (error) {
         console.error('Failed to reject money move:', error)
       }
@@ -390,6 +412,7 @@ const Treasurer: React.FC = () => {
           }}
         />
       )}
+      {pinModal}
     </div>
   )
 }

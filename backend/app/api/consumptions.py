@@ -1,23 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
 from app.db.session import get_db
 from app.models import Consumption, User, Product
+from app.services.pin import PinService
+from app.core.enums import UserRole
 from app.schemas import ConsumptionCreate, ConsumptionResponse
 from app.services.audit import AuditService
 
 router = APIRouter(prefix="/consumptions", tags=["consumptions"])
 
 
+def treasurer_actor(
+    actor_id: UUID = Header(..., alias="x-actor-id"),
+    actor_pin: str = Header(..., alias="x-actor-pin"),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == actor_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if user.role != UserRole.TREASURER:
+        raise HTTPException(status_code=403, detail="Only treasurers allowed")
+    if not PinService.verify_user_pin(user.id, actor_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid treasurer PIN")
+    return user
+
+
 @router.post("/", response_model=ConsumptionResponse, status_code=201)
 def create_consumption(
     consumption: ConsumptionCreate,
-    creator_id: UUID = Query(..., description="ID of the user creating this consumption"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    treasurer=Depends(treasurer_actor)
 ):
-    """Create a new consumption"""
+    """Create a new consumption (treasurer authenticated via headers)"""
     # Verify user exists
     user = db.query(User).filter(User.id == consumption.user_id).first()
     if not user:
@@ -45,7 +62,7 @@ def create_consumption(
         qty=consumption.qty,
         unit_price_cents=unit_price_cents,
         amount_cents=amount_cents,
-        created_by=creator_id,
+        created_by=treasurer.id,
         at=datetime.now(timezone.utc)
     )
     
@@ -56,7 +73,7 @@ def create_consumption(
     # Log action
     AuditService.log_consumption_created(
         db=db,
-        actor_id=creator_id,
+        actor_id=treasurer.id,
         consumption_id=db_consumption.id,
         user_id=consumption.user_id,
         product_name=product.name,

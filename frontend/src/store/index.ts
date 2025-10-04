@@ -25,12 +25,8 @@ interface AppState {
   authTimestamp: number | null
   setAuthTimestamp: (timestamp: number | null) => void
 
-  // Admin PIN authentication (for user management page gating)
-  adminAuthenticated: boolean
-  setAdminAuthenticated: (authenticated: boolean) => void
-  adminPin: string | null
-  setAdminPin: (pin: string | null) => void
-  clearAdminAuth: () => void
+  // Deprecated actor storage removed – per-action PIN entry now required
+
 }
 
 export const useAppStore = create<AppState>()(
@@ -56,11 +52,9 @@ export const useAppStore = create<AppState>()(
       authTimestamp: null,
   setAuthTimestamp: (timestamp: number | null) => set({ authTimestamp: timestamp }),
 
-      adminAuthenticated: false,
-  setAdminAuthenticated: (authenticated: boolean) => set({ adminAuthenticated: authenticated }),
-  adminPin: null,
-  setAdminPin: (pin: string | null) => set({ adminPin: pin }),
-      clearAdminAuth: () => set({ adminAuthenticated: false, adminPin: null }),
+      // No stored actor credentials anymore (per-action PIN entry)
+
+    // Removed admin PIN state (legacy global admin pin model)
     }),
     {
       name: 'coffee-fund-store',
@@ -70,6 +64,7 @@ export const useAppStore = create<AppState>()(
         currentUser: state.currentUser,
         treasurerAuthenticated: state.treasurerAuthenticated,
         authTimestamp: state.authTimestamp,
+    // actor removed from persistence
         // adminAuthenticated & adminPin intentionally not persisted for security
       }),
     }

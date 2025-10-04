@@ -1,64 +1,110 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.db.session import get_db
-from app.models import User
-from app.schemas import UserBalance, UserCreate, UserResponse, UserUpdate
+from app.models import User, Consumption, MoneyMove, Audit
+from app.schemas import (
+    UserBalance,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+    UserPinVerificationRequest,
+    UserPinChangeRequest,
+    AdminUserCreateRequest,
+)
 from app.services.audit import AuditService
 from app.services.balance import BalanceService
 from app.services.qr_code import QRCodeService
 from app.services.pin import PinService
+def admin_actor(
+    actor_id: UUID = Header(..., alias="x-actor-id"),
+    actor_pin: str = Header(..., alias="x-actor-pin"),
+    db: Session = Depends(get_db)
+):
+    """Dependency ensuring the supplied actor is an admin and PIN is valid."""
+    user = db.query(User).filter(User.id == actor_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Actor is not an admin")
+    if not PinService.verify_user_pin(user.id, actor_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid admin PIN")
+    return user
+
+
+def treasurer_actor(
+    actor_id: UUID = Header(..., alias="x-actor-id"),
+    actor_pin: str = Header(..., alias="x-actor-pin"),
+    db: Session = Depends(get_db)
+):
+    """Dependency ensuring the supplied actor is a treasurer and PIN is valid."""
+    user = db.query(User).filter(User.id == actor_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if user.role not in [UserRole.TREASURER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Actor is not a treasurer or admin")
+    if not PinService.verify_user_pin(user.id, actor_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    return user
 from app.core.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-# PIN verification schemas
-class PinVerificationRequest(BaseModel):
-    pin: str
+"""User management endpoints.
 
-
-class PinChangeRequest(BaseModel):
-    current_pin: str
-    new_pin: str
+Refactored: Removed global Admin/Treasurer PIN concept. All authentication now
+relies on per-user PINs. User creation always requires a per-user PIN (hashed
+server-side). Privileged actions (future enhancement) should verify the actor's
+own PIN; for now we only log actor_id for audit trail.
+"""
 
 
 @router.post("/", response_model=UserResponse, status_code=201)
 def create_user(
-    user: UserCreate,
+    payload: AdminUserCreateRequest,
     db: Session = Depends(get_db),
-    creator_id: Optional[UUID] = Query(None, description="ID of the user creating this user"),
-    pin: str = Body(..., description="Admin PIN for privileged user creation", embed=True)
 ):
-    """Create a new user (admin PIN required)."""
-    # Email must be provided and unique
-    existing_email = db.query(User).filter(User.email == user.email).first()
-    if existing_email:
-        raise HTTPException(status_code=400, detail="User with this email already exists")
-    
-    # Verify admin PIN (global) always for user creation
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
-    
-    # Create new user (exclude PIN from database)
-    user_data = user.model_dump(exclude={'pin'})
+    """Create a new user (admin only).
+
+    The request must include an existing admin user's ID and correct PIN.
+    Bootstrapping note: If no admin exists yet, allow creation of the first admin without actor credentials.
+    """
+    admin_user = db.query(User).filter(User.id == payload.actor_id).first()
+    target = payload.user
+
+    # Bootstrapping: allow first admin creation if no admin exists in DB
+    existing_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
+    if existing_admin is None and target.role == UserRole.ADMIN:
+        # proceed without actor validation
+        pass
+    else:
+        if not admin_user:
+            raise HTTPException(status_code=404, detail="Actor (admin) not found")
+        if admin_user.role != UserRole.ADMIN:
+            raise HTTPException(status_code=403, detail="Actor is not an admin")
+        if not PinService.verify_user_pin(admin_user.id, payload.actor_pin, db):
+            raise HTTPException(status_code=403, detail="Invalid admin PIN")
+
+    user_data = target.model_dump(exclude={'pin'})
+    user_data['pin_hash'] = PinService.hash_pin(target.pin)
     db_user = User(**user_data)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
 
-    # Log action
-    if creator_id:
+    # Audit (only if we had a validated actor)
+    if existing_admin is not None:
         AuditService.log_action(
             db=db,
-            actor_id=creator_id,
+            actor_id=payload.actor_id,
             action="create",
             entity="user",
             entity_id=db_user.id,
-            meta_data={"display_name": user.display_name, "email": str(getattr(user, 'email', '')), "role": user.role.value}
+            meta_data={"display_name": target.display_name, "role": target.role.value}
         )
 
     return UserResponse.model_validate(db_user)
@@ -69,9 +115,9 @@ def get_users(
     skip: int = 0,
     limit: int = 100,
     active_only: bool = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Get all users"""
+    """Get all users (public read access for dashboard and kiosk functionality)"""
     query = db.query(User)
     if active_only:
         query = query.filter(User.is_active == True)
@@ -81,7 +127,7 @@ def get_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: UUID, db: Session = Depends(get_db)):
+def get_user(user_id: UUID, db: Session = Depends(get_db), _admin=Depends(admin_actor)):
     """Get a specific user"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -94,31 +140,34 @@ def update_user(
     user_id: UUID,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the update"),
-    pin: str = Body(..., description="Admin PIN for privileged update", embed=True)
+    admin=Depends(admin_actor)
 ):
-    """Update a user (requires admin PIN)."""
-    # Verify admin PIN
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
-    
+    """Update a user.
+
+    NOTE: Actor authorization & PIN verification to be added in a future
+    enhancement; currently any caller can update. Only PIN changes require
+    providing a new 'pin' value inside user_update.
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Update fields
     update_data = user_update.model_dump(exclude_unset=True)
+    if 'pin' in update_data:
+        new_pin = update_data.pop('pin')
+        if new_pin:
+            user.pin_hash = PinService.hash_pin(new_pin)
+
     for field, value in update_data.items():
         setattr(user, field, value)
 
     db.commit()
     db.refresh(user)
 
-    # Log action
-    if actor_id:
+    if admin:
         AuditService.log_action(
             db=db,
-            actor_id=actor_id,
+            actor_id=admin.id,
             action="update",
             entity="user",
             entity_id=user.id,
@@ -132,55 +181,82 @@ def update_user(
 def delete_user(
     user_id: UUID,
     db: Session = Depends(get_db),
-    actor_id: Optional[UUID] = Query(None, description="ID of the user performing the deletion"),
-    pin: str = Body(..., description="Admin PIN for privileged deletion", embed=True)
+    admin=Depends(admin_actor)
 ):
-    """Delete (soft) a user (requires admin PIN)."""
-    # Verify admin PIN
-    if not PinService.verify_pin(pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
-    
+    """Hard delete a user (admin only).
+
+    Permanently removes the user row. If the user has related domain records
+    (consumptions, money moves, audit entries) deletion is blocked to preserve
+    referential integrity. Caller must first handle or archive those records.
+    The special admin performing the action cannot delete themselves if they
+    are the only remaining admin (safety guard).
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Soft delete by setting is_active to False
-    user.is_active = False
+    # Prevent deleting the last remaining admin to avoid lock-out
+    if user.role == UserRole.ADMIN:
+        remaining_admins = db.query(User).filter(User.role == UserRole.ADMIN, User.id != user.id).count()
+        if remaining_admins == 0:
+            raise HTTPException(status_code=400, detail="Cannot delete the last remaining admin user")
+
+    # Check for dependent records; block deletion if any exist
+    has_consumptions = db.query(Consumption).filter(Consumption.user_id == user.id).first() is not None
+    has_created_consumptions = db.query(Consumption).filter(Consumption.created_by == user.id).first() is not None
+    has_money_moves = db.query(MoneyMove).filter(MoneyMove.user_id == user.id).first() is not None
+    has_created_money_moves = db.query(MoneyMove).filter(MoneyMove.created_by == user.id).first() is not None
+    has_confirmed_money_moves = db.query(MoneyMove).filter(MoneyMove.confirmed_by == user.id).first() is not None
+    has_audit_entries = db.query(Audit).filter(Audit.actor_id == user.id).first() is not None
+
+    if any([
+        has_consumptions,
+        has_created_consumptions,
+        has_money_moves,
+        has_created_money_moves,
+        has_confirmed_money_moves,
+        has_audit_entries,
+    ]):
+        raise HTTPException(status_code=409, detail="Cannot delete user with related records")
+
+    db.delete(user)
     db.commit()
-    db.refresh(user)
 
-    # Log action
-    if actor_id:
-        AuditService.log_action(
-            db=db,
-            actor_id=actor_id,
-            action="delete",
-            entity="user",
-            entity_id=user.id,
-            meta_data={"display_name": user.display_name, "soft_delete": True}
-        )
+    AuditService.log_action(
+        db=db,
+        actor_id=admin.id,
+        action="delete",
+        entity="user",
+        entity_id=user_id,
+        meta_data={"display_name": user.display_name, "hard_delete": True}
+    )
 
-    return {"message": "User deleted successfully"}
+    return {"message": "User permanently deleted"}
 
 
-@router.post("/verify-pin")
-def verify_pin(pin_request: PinVerificationRequest, db: Session = Depends(get_db)):
-    """Verify admin PIN."""
-    if not PinService.verify_pin(pin_request.pin, db=db):
-        raise HTTPException(status_code=403, detail="Invalid PIN")
+# Removed legacy global /verify-pin endpoint (deprecated)
+
+
+@router.post("/verify-user-pin")
+def verify_user_pin(pin_request: UserPinVerificationRequest, db: Session = Depends(get_db)):
+    """Verify a specific user's PIN"""
+    if not PinService.verify_user_pin(pin_request.user_id, pin_request.pin, db):
+        raise HTTPException(status_code=403, detail="Invalid user PIN")
     
-    return {"message": "PIN verified successfully"}
+    return {"message": "User PIN verified successfully"}
 
 
-@router.post("/change-pin")
-def change_pin(
-    pin_change: PinChangeRequest,
+# Removed legacy global /change-pin endpoint (deprecated)
+
+
+@router.post("/change-user-pin")
+def change_user_pin(
+    pin_change: UserPinChangeRequest,
     db: Session = Depends(get_db),
     actor_id: Optional[UUID] = Query(None, description="ID of the user changing the PIN")
 ):
-    """Change the admin PIN (requires current PIN)."""
-    # Use the enhanced PIN service to change the PIN
-    if not PinService.change_pin(db, pin_change.current_pin, pin_change.new_pin):
+    """Change a specific user's PIN (requires current PIN)"""
+    if not PinService.change_user_pin(pin_change.user_id, pin_change.current_pin, pin_change.new_pin, db):
         raise HTTPException(status_code=403, detail="Invalid current PIN")
     
     # Log the action for audit purposes
@@ -188,13 +264,13 @@ def change_pin(
         AuditService.log_action(
             db=db,
             actor_id=actor_id,
-            action="change_pin",
-            entity="system",
-            entity_id=str(actor_id),
-            meta_data={"operation": "pin_change"}
+            action="change_user_pin",
+            entity="user", 
+            entity_id=pin_change.user_id,
+            meta_data={"operation": "user_pin_change"}
         )
     
-    return {"message": "PIN changed successfully"}
+    return {"message": "User PIN changed successfully"}
 
 
 @router.get("/{user_id}/balance", response_model=UserBalance)

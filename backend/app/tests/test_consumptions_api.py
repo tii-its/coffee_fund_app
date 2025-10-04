@@ -1,70 +1,65 @@
-"""
-Test consumption API endpoints
-"""
+"""Test consumption API endpoints (updated for admin wrapper + treasurer headers)."""
 import pytest
-from app.models import User, Product
-from app.core.enums import UserRole
-from app.core.config import settings
 from uuid import uuid4
 
 
+def _wrapper(admin_bootstrap, user_sub_payload: dict):
+    return {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": user_sub_payload,
+    }
+
+
 @pytest.fixture
-def test_user(client):
-    """Create a test user"""
-    import time
-    user_data = {
+def test_user(client, admin_bootstrap):
+    payload = _wrapper(admin_bootstrap, {
         "display_name": "Test User",
-        "email": f"consumption.test.user.{int(time.time()*1000)}@example.com",
         "role": "user",
-        "is_active": True
-    }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
+        "is_active": True,
+        "pin": "testpin123"
+    })
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 @pytest.fixture
-def test_treasurer(client):
-    """Create a test treasurer"""
-    import time
-    user_data = {
-        "display_name": "Test Treasurer", 
-        "email": f"consumption.test.treasurer.{int(time.time()*1000)}@example.com",
+def test_treasurer(client, admin_bootstrap):
+    treasurer_pin = "treasurerPIN123"
+    payload = _wrapper(admin_bootstrap, {
+        "display_name": "Test Treasurer",
         "role": "treasurer",
-        "is_active": True
-    }
-    response = client.post("/users/", json={"user": user_data, "pin": settings.admin_pin})
-    return response.json()
+        "is_active": True,
+        "pin": treasurer_pin
+    })
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
+    data = response.json()
+    data["_headers"] = {"x-actor-id": data["id"], "x-actor-pin": treasurer_pin}
+    return data
 
 
 @pytest.fixture
-def test_product(client):
-    """Create a test product"""
+def test_product(client, test_treasurer):
     import time
     product_data = {
         "name": f"Coffee {int(time.time()*1000)}",
         "price_cents": 150,
         "is_active": True
     }
-    response = client.post("/products/", json=product_data)
+    response = client.post("/products/", json=product_data, headers=test_treasurer["_headers"])
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 @pytest.fixture
 def sample_consumption_data(test_user, test_product):
-    """Sample consumption data"""
-    return {
-        "user_id": test_user["id"],
-        "product_id": test_product["id"],
-        "qty": 2
-    }
+    return {"user_id": test_user["id"], "product_id": test_product["id"], "qty": 2}
 
 
 def test_create_consumption(client, test_user, test_product, test_treasurer, sample_consumption_data):
-    """Test consumption creation"""
-    response = client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=sample_consumption_data
-    )
+    response = client.post("/consumptions/", json=sample_consumption_data, headers=test_treasurer["_headers"])
     assert response.status_code == 201
     
     data = response.json()
@@ -78,42 +73,29 @@ def test_create_consumption(client, test_user, test_product, test_treasurer, sam
 
 
 def test_create_consumption_user_not_found(client, test_product, test_treasurer):
-    """Test consumption creation with invalid user"""
     consumption_data = {
         "user_id": str(uuid4()),
         "product_id": test_product["id"],
         "qty": 1
     }
-    response = client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=consumption_data
-    )
+    response = client.post("/consumptions/", json=consumption_data, headers=test_treasurer["_headers"])
     assert response.status_code == 404
     assert "User not found" in response.json()["detail"]
 
 
 def test_create_consumption_product_not_found(client, test_user, test_treasurer):
-    """Test consumption creation with invalid product"""
     consumption_data = {
         "user_id": test_user["id"],
         "product_id": str(uuid4()),
         "qty": 1
     }
-    response = client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=consumption_data
-    )
+    response = client.post("/consumptions/", json=consumption_data, headers=test_treasurer["_headers"])
     assert response.status_code == 404
     assert "Product not found or inactive" in response.json()["detail"]
 
 
 def test_get_consumptions(client, test_user, test_product, test_treasurer, sample_consumption_data):
-    """Test getting all consumptions"""
-    # Create a consumption first
-    client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=sample_consumption_data
-    )
+    client.post("/consumptions/", json=sample_consumption_data, headers=test_treasurer["_headers"])
     
     response = client.get("/consumptions/")
     assert response.status_code == 200
@@ -125,12 +107,7 @@ def test_get_consumptions(client, test_user, test_product, test_treasurer, sampl
 
 
 def test_get_consumptions_with_filters(client, test_user, test_product, test_treasurer, sample_consumption_data):
-    """Test getting consumptions with filters"""
-    # Create a consumption
-    client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=sample_consumption_data
-    )
+    client.post("/consumptions/", json=sample_consumption_data, headers=test_treasurer["_headers"])
     
     # Filter by user_id
     response = client.get(f"/consumptions/?user_id={test_user['id']}")
@@ -152,12 +129,7 @@ def test_get_consumptions_with_filters(client, test_user, test_product, test_tre
 
 
 def test_get_consumption_by_id(client, test_user, test_product, test_treasurer, sample_consumption_data):
-    """Test getting specific consumption"""
-    # Create a consumption
-    create_response = client.post(
-        f"/consumptions/?creator_id={test_treasurer['id']}", 
-        json=sample_consumption_data
-    )
+    create_response = client.post("/consumptions/", json=sample_consumption_data, headers=test_treasurer["_headers"])
     consumption_id = create_response.json()["id"]
     
     response = client.get(f"/consumptions/{consumption_id}")
@@ -176,17 +148,11 @@ def test_get_consumption_by_id_not_found(client):
 
 
 def test_get_user_recent_consumptions(client, test_user, test_product, test_treasurer, sample_consumption_data):
-    """Test getting recent consumptions for a user"""
-    # Create multiple consumptions
     import time
     for i in range(3):
         consumption_data = sample_consumption_data.copy()
         consumption_data["qty"] = i + 1
-        client.post(
-            f"/consumptions/?creator_id={test_treasurer['id']}", 
-            json=consumption_data
-        )
-        # Ensure distinct timestamps for deterministic ordering
+        client.post("/consumptions/", json=consumption_data, headers=test_treasurer["_headers"])
         time.sleep(0.002)
     
     response = client.get(f"/consumptions/user/{test_user['id']}/recent?limit=2")
@@ -200,15 +166,10 @@ def test_get_user_recent_consumptions(client, test_user, test_product, test_trea
 
 
 def test_get_user_recent_consumptions_limit(client, test_user, test_product, test_treasurer, sample_consumption_data):
-    """Test limit parameter for recent consumptions"""
-    # Create 5 consumptions
     for i in range(5):
         consumption_data = sample_consumption_data.copy()
         consumption_data["qty"] = i + 1
-        client.post(
-            f"/consumptions/?creator_id={test_treasurer['id']}", 
-            json=consumption_data
-        )
+        client.post("/consumptions/", json=consumption_data, headers=test_treasurer["_headers"])
     
     # Test default limit
     response = client.get(f"/consumptions/user/{test_user['id']}/recent")

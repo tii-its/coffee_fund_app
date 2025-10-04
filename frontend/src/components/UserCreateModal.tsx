@@ -18,9 +18,9 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
   const { t } = useTranslation()
   const [formData, setFormData] = useState<UserCreate>({
     display_name: '',
-    email: '',
     role: 'user',
     is_active: true,
+    pin: '',
   })
   const [error, setError] = useState('')
 
@@ -32,28 +32,13 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
       return
     }
     
-    if (!formData.email.trim()) {
-      setError(t('user.emailRequired'))
-      return
-    }
-    
-    // Email validation regex
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      setError(t('user.emailInvalid'))
-      return
-    }
+    // No email validation (email removed from model)
     
     try {
       setError('')
-      await onSubmit({ ...formData })
+  await onSubmit({ ...formData })
       // Reset form
-      setFormData({
-        display_name: '',
-        email: '',
-        role: 'user',
-        is_active: true,
-      })
+      setFormData({ display_name: '', role: 'user', is_active: true, pin: '' })
       onClose()
     } catch (err: any) {
       setError(err.response?.data?.detail || t('common.error'))
@@ -62,17 +47,12 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
 
   const handleClose = () => {
     setError('')
-    setFormData({
-      display_name: '',
-      email: '',
-      role: 'user',
-      is_active: true,
-    })
+    setFormData({ display_name: '', role: 'user', is_active: true, pin: '' })
     onClose()
   }
 
-  const handleInputChange = (field: keyof UserCreate, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+  const handleInputChange = (field: keyof UserCreate, value: string | boolean | undefined) => {
+    setFormData((prev: UserCreate) => ({ ...prev, [field]: value as any }))
   }
 
   if (!isOpen) return null
@@ -92,7 +72,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
                 type="text"
                 id="display_name"
                 value={formData.display_name}
-                onChange={(e) => handleInputChange('display_name', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('display_name', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={t('user.displayNamePlaceholder')}
                 disabled={isLoading}
@@ -100,20 +80,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
               />
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('user.email')} *
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={t('user.emailPlaceholder')}
-                disabled={isLoading}
-              />
-            </div>
+            {/* Email field removed */}
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
@@ -122,7 +89,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
               <select
                 id="role"
                 value={formData.role}
-                onChange={(e) => handleInputChange('role', e.target.value as 'user' | 'treasurer')}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleInputChange('role', e.target.value as 'user' | 'treasurer')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isLoading}
               >
@@ -139,7 +106,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
                 type="text"
                 id="qr_code"
                 value={formData.qr_code || ''}
-                onChange={(e) => handleInputChange('qr_code', e.target.value || undefined)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('qr_code', e.target.value || undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={t('user.qrCodePlaceholder')}
                 disabled={isLoading}
@@ -151,7 +118,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
                 type="checkbox"
                 id="is_active"
                 checked={formData.is_active ?? true}
-                onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('is_active', e.target.checked)}
                 className="mr-2"
                 disabled={isLoading}
               />
@@ -160,7 +127,20 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
               </label>
             </div>
 
-            {/* Per-user PIN removed; global Admin PIN now controls privileged actions */}
+            <div>
+              <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
+                {t('pin.label')} *
+              </label>
+              <input
+                type="password"
+                id="pin"
+                value={formData.pin}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('pin', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t('pin.placeholder')}
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
           {error && (
@@ -178,7 +158,7 @@ const UserCreateModal: React.FC<UserCreateModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !formData.display_name.trim() || !formData.email.trim()}
+              disabled={isLoading || !formData.display_name.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.loading') : t('user.createUser')}

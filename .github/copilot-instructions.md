@@ -6,8 +6,8 @@ This file gives **targeted, actionable guidance** to a GitHub Copilot agent work
 
 ## Big Picture
 - Build a small **Coffee Fund Web App** to track product consumption and cash movements for a team.
-- Roles: **User**, **Treasurer** (Verwalter). A separate **Admin PIN** (not a user) gates certain privileged maintenance actions (e.g. user CRUD, PIN rotation).
-- All **money movements** (deposits, payouts) use a **two-person confirmation rule** (created by Treasurer, confirmed by User). No SSO in MVP.
+- Roles: **User**, **Treasurer (Verwalter)**. Every user (including treasurers) has a **mandatory per-user PIN** stored hashed. There is **no global Admin/Treasurer PIN** anymore.
+- All **money movements** (deposits, payouts) use a **two-person confirmation rule** (created by Treasurer, confirmed by different Treasurer). (Future enhancement: optional user confirmation step – currently balance changes on treasurer confirmation.)
 - App must be **usable simultaneously by multiple users** (concurrent sessions on kiosk, desktop, mobile).
 - App must support **German and English** (i18n-ready UI, switchable).
 
@@ -101,12 +101,16 @@ Makefile
   - `THRESHOLD_CENTS=1000`  # default 10€
   - `CSV_EXPORT_LIMIT=50000`
   - `CORS_ORIGINS=http://localhost:3000,http://localhost:5173`
-  - `ADMIN_PIN=1234` (set a strong value in real deployments; legacy `TREASURER_PIN` env var accepted temporarily as a fallback during deprecation window)
+  - (Removed: ADMIN_PIN / TREASURER_PIN – per-user PINs only)
 - **Dev up:** `make dev` (uses docker-compose.dev.yml)
 - **Test:** `make test` (backend + frontend), `make test-backend`, `make test-frontend`
 - **Migrations:** `make migrate` (upgrade), `make migrate-generate msg="description"`
 - **Linting:** `make lint` (check), `make lint-fix` (auto-fix)
 - **Logs/Shell:** `make logs-backend`, `make shell-backend`, `make shell-db`
+ - **Frontend tests (direct in running dev containers):**
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml exec frontend npm test --silent -- --run
+   ```
 
 ---
 
@@ -116,12 +120,12 @@ Makefile
 ### users
 - id (uuid, pk)
 - display_name (str)
-- email (str, unique, optional) - Used for notifications and updates
+- email (str, unique, required in current implementation)
 - qr_code (str?, optional)
 - role (enum: user/treasurer)
 - is_active (bool)
 - created_at (ts)
-- PIN (str, hashed, required)
+- pin_hash (str, required) — SHA-256 hash of user's PIN
 
 ### products
 - id (uuid, pk)
@@ -148,7 +152,7 @@ Makefile
 - note (str?)
 - created_at (ts)
 - created_by (fk users)
-- confirmed_at (t?)
+- confirmed_at (ts)
 - confirmed_by (fk users): must be different from created_by, must be a treasurer
 - status (enum: pending/confirmed/rejected)
 
@@ -166,7 +170,7 @@ Makefile
 ## Roles
 - **User**: Can access dashboard, kiosk
 - **Treasurer**: All User rights + access products and treasurer page; initiates & confirms money moves (with two-person rule)
-- **Admin PIN**: A global secret (not a stored user) required for user CRUD, rotating the Admin PIN itself, and other system-level maintenance. Stored as a hashed value in `system_settings` under `admin_pin_hash` (legacy `treasurer_pin_hash` migrated automatically).
+- **Admin**: A special, unique and preconfigured user required for user CRUD, rotating the Admin PIN itself. Cannot be removed.
 
 ## UI / UX Notes
 - **Kiosk mode**: Fast booking in 2–3 clicks. User → Product → Confirm.
@@ -175,7 +179,7 @@ Makefile
 - **Treasurer dashboard**: Requires Treasurer role. List of all balances, pending confirmations, product mgmt, CSV export, money movement approvals
 - **Dashboard**: Overview of coffee fund balance, Allows selection of user which leads to user dashboard; top 3 coffee consumers, List of users below threshold, 
 - **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN
-**Users page**: Requires Admin PIN to access. List all users, create new users, edit existing users (change role, deactivate).
+**Users page**: Accessible to Treasurers (future: may require re-auth with treasurer's own PIN). List all users, create new users (must supply a PIN), edit existing users (can rotate their PIN), deactivate users.
 - **Products**: Requrires Treasurer role. List, create, edit, deactivate products.
 
 ---
@@ -188,16 +192,16 @@ Makefile
 - **Test Database**: Tests use SQLite with custom TypeDecorators for UUID/JSON compatibility
 
 ### Service Layer
-- **Balance Logic**: BalanceService calculates: `confirmed_deposits - confirmed_payouts - all_consumptions`
-- **Audit Trail**: Every mutation logged via AuditService with actor_id and structured metadata
-- **Two-Person Rule**: Money moves need creator ≠ confirmer, enforced in API layer
-- **User Creation**: Requires Admin PIN verification. Email field is optional
-- **PIN Management**: `reset_admin_pin` script / make target (`make admin-pin-reset PIN=xxxx`) sets or rotates the Admin PIN. Backward compatibility: if only `treasurer_pin_hash` exists it is renamed on first use.
+- **Balance Logic**: `confirmed_deposits - confirmed_payouts - all_consumptions`
+- **Audit Trail**: Every mutation logged with actor_id + metadata.
+- **Two-Person Rule**: Money moves require different treasurer for creation vs confirmation.
+- **User Creation**: Requires per-user PIN (mandatory). Email required (current impl) for uniqueness.
+- **PIN Management**: Only per-user. No global rotation target; removal of legacy admin/tresurer reset flow.
 
 ### Frontend Components
-- **UserCreateModal**: Form-based modal for creating new users
-- **UserEditModal**: Modal for editing existing users (includes email field)
-- **Admin PIN**: PIN input is required when accessing users page to create or edit users
+- **UserCreateModal**: Supply display name, email, role, PIN.
+- **UserEditModal**: Can change display name, email, role, active flag, and optionally set a new PIN.
+- (Removed) Global Admin PIN gating — remove any stale UI expecting it.
 
 ### API Development
 - **Response Objects**: Use FastAPI Response for file downloads with proper headers:
@@ -220,11 +224,24 @@ Makefile
 ---
 
 ## Acceptance Criteria
-1. Multiple users can log consumptions simultaneously without data conflicts.  
-2. App UI can switch between German and English.  
-3. User can book a coffee in ≤3 clicks.  
-4. Treasurer dashboard shows balances, pending confirmations; CSV export available.  
-5. Deposits/payouts require confirmation by user before balance changes.  
-6. All actions are logged in `audit` table.  
-7. Admin PIN required for user create/update/delete and PIN rotation; legacy treasurer PIN env var accepted only during deprecation window.
+1. Multiple users can log consumptions simultaneously without data conflicts.
+2. UI language toggle (DE/EN) works across sessions.
+3. Coffee booking flow: Select user -> select product -> confirm (≤3 clicks).
+4. Treasurer dashboard lists balances, pending money moves, product management, CSV export.
+5. Money moves enforce two-person rule (creator ≠ confirmer); pending until confirmed.
+6. All mutations recorded in `audit` with actor + metadata.
+7. Every user has a PIN; user creation fails without PIN; PIN changes hashed.
+8. No reliance on any global/shared PIN.
+
+## Migration Notes (Legacy Cleanup)
+- Removed endpoints: `/users/verify-pin`, `/users/change-pin` (global variants) replaced by `/users/verify-user-pin`, `/users/change-user-pin`.
+- Removed config/env: `ADMIN_PIN`, `TREASURER_PIN` — delete from `.env.example` and code once references are gone.
+- Remove Makefile targets: `admin-pin-reset` (or equivalent) – obsolete.
+- Ensure frontend no longer prompts for a global PIN; per-user PIN entry occurs only in contexts that logically require it (e.g., PIN change, maybe future sensitive action confirmation).
+
+## Pending Enhancements (Post-Refactor)
+- Add per-action PIN re-verification for sensitive treasurer operations.
+- Add rate limiting / lockout after repeated wrong PIN attempts.
+- Introduce optional email notifications for large deposits/payouts.
+- Replace `datetime.utcnow()` with timezone-aware `datetime.now(datetime.UTC)`.
 ---

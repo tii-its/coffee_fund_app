@@ -6,7 +6,7 @@ interface UserEditModalProps {
   isOpen: boolean
   onClose: () => void
   user: User | null
-  onSubmit: (userUpdate: UserUpdate, pin: string) => void | Promise<void>
+  onSubmit: (userUpdate: UserUpdate) => void | Promise<void>
   isLoading?: boolean
 }
 
@@ -19,14 +19,13 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [formData, setFormData] = useState<UserUpdate>({})
-  const [pin, setPin] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (user) {
       setFormData({
         display_name: user.display_name,
-        email: user.email,
+  // email removed
         role: user.role,
         is_active: user.is_active,
         qr_code: user.qr_code || undefined,
@@ -36,15 +35,10 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pin.trim()) {
-      setError(t('pin.required'))
-      return
-    }
     
     try {
       setError('')
-      await onSubmit(formData, pin)
-      setPin('')
+      await onSubmit(formData)
       onClose()
     } catch (err: any) {
       setError(err.response?.data?.detail || t('common.error'))
@@ -52,7 +46,6 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   }
 
   const handleClose = () => {
-    setPin('')
     setError('')
     setFormData({})
     onClose()
@@ -85,20 +78,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
               />
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('user.email')}
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email || ''}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={t('user.emailPlaceholder')}
-                disabled={isLoading}
-              />
-            </div>
+            {/* Email field removed */}
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
@@ -147,18 +127,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
           </div>
 
           <div className="mb-4">
-            <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('pin.label')} *
-            </label>
-            <input
-              type="password"
-              id="pin"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={t('pin.placeholder')}
-              disabled={isLoading}
-            />
+              {/* Email field removed */}
             {error && (
               <p className="text-red-500 text-sm mt-1">{error}</p>
             )}
@@ -175,7 +144,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !pin.trim()}
+              disabled={isLoading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.loading') : t('common.save')}
