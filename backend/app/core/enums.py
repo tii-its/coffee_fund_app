@@ -4,6 +4,7 @@ from enum import Enum
 class UserRole(str, Enum):
     USER = "user"
     TREASURER = "treasurer"
+    ADMIN = "admin"
 
 
 class MoneyMoveType(str, Enum):

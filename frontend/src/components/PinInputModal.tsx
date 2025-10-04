@@ -15,7 +15,7 @@ const PinInputModal: React.FC<PinInputModalProps> = ({
   onClose,
   onSubmit,
   title = 'PIN Verification Required',
-  description = 'Please enter the treasurer PIN to continue.',
+  description = 'Please enter the Admin PIN to continue.',
   isLoading = false,
 }) => {
   const { t } = useTranslation()

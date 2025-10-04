@@ -1,16 +1,19 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi, productsApi, consumptionsApi } from '@/api/client'
+// Replacing promptForActor with modal approach
+import { usePerActionPin } from '@/hooks/usePerActionPin'
 import { formatCurrency } from '@/lib/utils'
 import UserPicker from '@/components/UserPicker'
 import ProductGrid from '@/components/ProductGrid'
 import type { User, Product } from '@/api/types'
+import { useAppStore } from '@/store'
 
 const Kiosk: React.FC = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const { selectedUser, setSelectedUser } = useAppStore()
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [step, setStep] = useState<'user' | 'product' | 'confirm' | 'complete'>('user')
@@ -34,12 +37,16 @@ const Kiosk: React.FC = () => {
   })
 
   // Create consumption mutation
+  const { requestPin, pinModal } = usePerActionPin()
   const createConsumption = useMutation({
-    mutationFn: (data: { user_id: string; product_id: string; qty: number; creator_id: string }) =>
-      consumptionsApi.create(
+    mutationFn: async (data: { user_id: string; product_id: string; qty: number }) => {
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('PIN required')
+      return consumptionsApi.create(
         { user_id: data.user_id, product_id: data.product_id, qty: data.qty },
-        data.creator_id
-      ),
+        { actorId, pin }
+      )
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userBalance'] })
       queryClient.invalidateQueries({ queryKey: ['consumptions'] })
@@ -63,15 +70,11 @@ const Kiosk: React.FC = () => {
   const handleConfirmPurchase = () => {
     if (selectedUser && selectedProduct) {
       // For kiosk mode, we'll use the first treasurer as creator (in real app, might be a kiosk user)
-      const treasurerUser = users.find(u => u.role === 'treasurer')
-      if (treasurerUser) {
-        createConsumption.mutate({
-          user_id: selectedUser.id,
-          product_id: selectedProduct.id,
-          qty: quantity,
-          creator_id: treasurerUser.id,
-        })
-      }
+      createConsumption.mutate({
+        user_id: selectedUser.id,
+        product_id: selectedProduct.id,
+        qty: quantity,
+      })
     }
   }
 
@@ -120,7 +123,7 @@ const Kiosk: React.FC = () => {
       {step === 'user' && (
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-6">{t('kiosk.selectUser')}</h2>
-          <UserPicker users={users} onSelect={handleUserSelect} />
+          <UserPicker users={users} onSelect={handleUserSelect} selectedUserId={selectedUser?.id || null} />
         </div>
       )}
 
@@ -241,6 +244,7 @@ const Kiosk: React.FC = () => {
           <p className="text-gray-600">{t('common.loading')}...</p>
         </div>
       )}
+      {pinModal}
     </div>
   )
 }

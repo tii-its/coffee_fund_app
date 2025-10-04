@@ -8,7 +8,6 @@ from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus
 def db_test_user(db_session):
     user = User(
         display_name="Test User",
-        email="test.user@example.com",
         role=UserRole.USER,
         is_active=True
     )
@@ -126,9 +125,9 @@ def test_balance_calculation_pending_deposit_ignored(db_session, db_test_user, d
 def test_get_users_above_threshold(db_session):
     """Test getting users with balance above or equal to threshold"""
     # Create users with different balances
-    user1 = User(display_name="User1", email="user1@example.com", role=UserRole.USER, is_active=True)
-    user2 = User(display_name="User2", email="user2@example.com", role=UserRole.USER, is_active=True)  
-    user3 = User(display_name="User3", email="user3@example.com", role=UserRole.USER, is_active=True)
+    user1 = User(display_name="User1", role=UserRole.USER, is_active=True)
+    user2 = User(display_name="User2", role=UserRole.USER, is_active=True)  
+    user3 = User(display_name="User3", role=UserRole.USER, is_active=True)
     
     db_session.add_all([user1, user2, user3])
     db_session.commit()
@@ -185,9 +184,9 @@ def test_get_users_above_threshold(db_session):
 def test_get_users_below_threshold(db_session):
     """Test getting users with balance below threshold"""
     # Create users with different balances
-    user1 = User(display_name="User1", email="user1@example.com", role=UserRole.USER, is_active=True)
-    user2 = User(display_name="User2", email="user2@example.com", role=UserRole.USER, is_active=True)  
-    user3 = User(display_name="User3", email="user3@example.com", role=UserRole.USER, is_active=True)
+    user1 = User(display_name="User1", role=UserRole.USER, is_active=True)
+    user2 = User(display_name="User2", role=UserRole.USER, is_active=True)  
+    user3 = User(display_name="User3", role=UserRole.USER, is_active=True)
     
     db_session.add_all([user1, user2, user3])
     db_session.commit()

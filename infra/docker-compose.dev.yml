@@ -26,12 +26,11 @@ services:
     volumes:
       - ../backend:/app
     environment:
-      - DATABASE_URL=postgresql+psycopg://coffee:coffee@db:5432/coffee
-      - SECRET_KEY=dev-secret-key
-      - THRESHOLD_CENTS=1000
-      - CSV_EXPORT_LIMIT=50000
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-      - TREASURER_PIN=1234
+      DATABASE_URL: postgresql+psycopg://coffee:coffee@db:5432/coffee
+      SECRET_KEY: dev-secret-key
+      THRESHOLD_CENTS: 1000
+      CSV_EXPORT_LIMIT: 50000
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
     depends_on:
       db:
         condition: service_healthy
@@ -47,7 +46,7 @@ services:
       - ../frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000
+      VITE_API_URL: http://localhost:8000
     depends_on:
       - backend
     command: npm run dev -- --host 0.0.0.0 --port 3000

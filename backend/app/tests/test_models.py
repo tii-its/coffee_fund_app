@@ -7,7 +7,6 @@ def test_user_model(db_session):
     """Test user model creation and relationships"""
     user = User(
         display_name="Test User",
-        email="test.user@example.com",
         role=UserRole.USER,
         is_active=True
     )

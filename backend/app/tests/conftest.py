@@ -18,6 +18,7 @@ from app.db.session import get_db, Base
 # Import all models to ensure they're registered with Base.metadata
 from app.models import User, Product, Consumption, MoneyMove, Audit
 from app.core.enums import UserRole, MoneyMoveType, MoneyMoveStatus, AuditAction
+from app.core.config import settings
 
 
 # Custom TypeDecorator for UUID compatibility with SQLite
@@ -168,10 +169,9 @@ def client(test_db):
 
 @pytest.fixture
 def db_test_user(db_session):
-    """Create a test user in database."""
+    """Create a test user in database (no email field)."""
     user = User(
         display_name="Test User",
-        email="test.user@example.com",
         role=UserRole.USER,
         is_active=True
     )
@@ -183,10 +183,9 @@ def db_test_user(db_session):
 
 @pytest.fixture  
 def db_test_treasurer(db_session):
-    """Create a test treasurer in database."""
+    """Create a test treasurer in database (no email field)."""
     treasurer = User(
         display_name="Test Treasurer",
-        email="test.treasurer@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -198,10 +197,9 @@ def db_test_treasurer(db_session):
 
 @pytest.fixture
 def db_test_treasurer2(db_session):
-    """Create a second test treasurer in database."""
+    """Create a second test treasurer in database (no email field)."""
     treasurer = User(
         display_name="Test Treasurer 2", 
-        email="test.treasurer2@example.com",
         role=UserRole.TREASURER,
         is_active=True
     )
@@ -227,112 +225,119 @@ def db_test_product(db_session):
 
 # API fixtures (return API response dictionaries with 'id' fields)
 @pytest.fixture
-def test_user(client):
-    """Create a test user via API and return response."""
-    import time
-    user_data = {
-        "display_name": "API Test User",
-        "email": f"api.test.user.{int(time.time()*1000)}@example.com",
-        "role": "user",
-        "is_active": True
+def admin_bootstrap(client):
+    """Create (or get) the bootstrap admin user and return (admin, pin)."""
+    admin_pin = "AdminPIN123"
+    payload = {
+        "actor_id": str(uuid.uuid4()),  # ignored during bootstrap
+        "actor_pin": "bootstrap-ignore",
+        "user": {
+            "display_name": "Bootstrap Admin",
+            "role": "admin",
+            "is_active": True,
+            "pin": admin_pin
+        }
     }
-    response = client.post("/users/", json=user_data)
-    if response.status_code != 201:
-        # If user exists, try with a timestamp to make it unique
-        import time
-        user_data["display_name"] = f"API Test User {int(time.time() * 1000)}"
-        response = client.post("/users/", json=user_data)
-    
-    if response.status_code != 201:
-        print(f"Failed to create user. Status: {response.status_code}, Response: {response.text}")
-        raise AssertionError(f"Expected 201, got {response.status_code}: {response.text}")
-    
-    response_data = response.json()
-    if 'id' not in response_data:
-        raise AssertionError(f"Response missing 'id' field: {response_data}")
-    
-    return response_data
+    # Try creation; if already exists, fetch list with headers (will fail without headers if we didn't create yet)
+    resp = client.post("/users/", json=payload)
+    if resp.status_code not in (201, 400):  # 400 could arise if second admin attempt blocked
+        raise AssertionError(f"Unexpected admin bootstrap status {resp.status_code}: {resp.text}")
+    # Retrieve admin via listing (needs headers). Provide headers using known admin creds.
+    # First we need admin id: if creation succeeded, in resp.json(); else attempt list with guessed id not possible
+    admin_id = None
+    if resp.status_code == 201:
+        admin_id = resp.json()["id"]
+    else:
+        # Attempt to list users by iterating possible; fallback: cannot easily get id without headers so assume creation succeeded earlier in session
+        # For simplicity in test context, enforce creation success path
+        raise AssertionError("Admin already existed unexpectedly during bootstrap in isolated test context")
+    return {"id": admin_id, "pin": admin_pin}
 
 
 @pytest.fixture
-def test_treasurer(client):
-    """Create a test treasurer via API and return response."""
-    import time
-    treasurer_data = {
-        "display_name": "API Test Treasurer",
-        "email": f"api.test.treasurer.{int(time.time()*1000)}@example.com",
-        "role": "treasurer",
-        "is_active": True
-    }
-    response = client.post("/users/", json=treasurer_data)
-    if response.status_code != 201:
-        # If user exists, try with a timestamp to make it unique
-        import time
-        treasurer_data["display_name"] = f"API Test Treasurer {int(time.time() * 1000)}"
-        response = client.post("/users/", json=treasurer_data)
-    
-    if response.status_code != 201:
-        print(f"Failed to create treasurer. Status: {response.status_code}, Response: {response.text}")
-        raise AssertionError(f"Expected 201, got {response.status_code}: {response.text}")
-    
-    response_data = response.json()
-    if 'id' not in response_data:
-        raise AssertionError(f"Response missing 'id' field: {response_data}")
-    
-    return response_data
+def admin_headers(admin_bootstrap):
+    return {"x-actor-id": admin_bootstrap["id"], "x-actor-pin": admin_bootstrap["pin"]}
 
 
 @pytest.fixture
-def test_product(client):
-    """Create a test product via API and return response."""
+def test_user(client, admin_bootstrap):
+    """Create a test user via API using admin wrapper."""
+    import time
+    user_payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"API Test User {int(time.time()*1000)}",
+            "role": "user",
+            "is_active": True,
+            "pin": "testpin123"
+        }
+    }
+    response = client.post("/users/", json=user_payload)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+@pytest.fixture
+def treasurer_context(client, admin_bootstrap):
+    """Create a treasurer via admin wrapper and return (treasurer, headers)."""
+    import time
+    treasurer_pin = "treasurerPIN123"
+    payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"API Test Treasurer {int(time.time()*1000)}",
+            "role": "treasurer",
+            "is_active": True,
+            "pin": treasurer_pin
+        }
+    }
+    resp = client.post("/users/", json=payload)
+    assert resp.status_code == 201, resp.text
+    treasurer = resp.json()
+    headers = {"x-actor-id": treasurer["id"], "x-actor-pin": treasurer_pin}
+    return {"treasurer": treasurer, "headers": headers}
+
+
+@pytest.fixture
+def test_product(client, treasurer_context):
+    """Create a test product via API (treasurer headers) and return response."""
     import time
     product_data = {
         "name": f"API Test Coffee {int(time.time()*1000)}",
         "price_cents": 150,
         "is_active": True
     }
-    response = client.post("/products/", json=product_data)
-    if response.status_code != 201:
-        # If product exists, try with a timestamp to make it unique
-        import time
-        product_data["name"] = f"API Test Coffee {int(time.time() * 1000)}"
-        response = client.post("/products/", json=product_data)
-    
-    if response.status_code != 201:
-        print(f"Failed to create product. Status: {response.status_code}, Response: {response.text}")
-        raise AssertionError(f"Expected 201, got {response.status_code}: {response.text}")
-    
-    response_data = response.json()
-    if 'id' not in response_data:
-        raise AssertionError(f"Response missing 'id' field: {response_data}")
-    
-    return response_data
+    response = client.post("/products/", json=product_data, headers=treasurer_context["headers"])
+    assert response.status_code == 201, response.text
+    return response.json()
 
 
 # Sample data fixtures
 @pytest.fixture
 def sample_user_data():
-    """Sample user data for testing."""
+    """Sample user data (user sub-payload)."""
     import time
     ts = int(time.time()*1000)
     return {
-        "display_name": "Test User",
-        "email": f"test.user.{ts}@example.com",
+        "display_name": f"Test User {ts}",
         "role": "user", 
-        "is_active": True
+        "is_active": True,
+        "pin": "testpin123"
     }
 
 
 @pytest.fixture
 def sample_treasurer_data():
-    """Sample treasurer data for testing."""
+    """Sample treasurer data (user sub-payload)."""
     import time
     ts = int(time.time()*1000)
     return {
-        "display_name": "Test Treasurer",
-        "email": f"test.treasurer.{ts}@example.com",
+        "display_name": f"Test Treasurer {ts}",
         "role": "treasurer",
-        "is_active": True
+        "is_active": True,
+        "pin": "treasurerPIN123"
     }
 
 

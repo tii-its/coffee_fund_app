@@ -6,8 +6,8 @@ This file gives **targeted, actionable guidance** to a GitHub Copilot agent work
 
 ## Big Picture
 - Build a small **Coffee Fund Web App** to track product consumption and cash movements for a team.
-- Roles: **User**, **Treasurer** (Verwalter).
-- All **money movements** (deposits, payouts) use a **two-person confirmation rule** (created by Treasurer, confirmed by User). No SSO in MVP.
+- Roles: **User**, **Treasurer (Verwalter)**. Every user (including treasurers) has a **mandatory per-user PIN** stored hashed. There is **no global Admin/Treasurer PIN** anymore.
+- All **money movements** (deposits, payouts) use a **two-person confirmation rule** (created by Treasurer, confirmed by different Treasurer). (Future enhancement: optional user confirmation step – currently balance changes on treasurer confirmation.)
 - App must be **usable simultaneously by multiple users** (concurrent sessions on kiosk, desktop, mobile).
 - App must support **German and English** (i18n-ready UI, switchable).
 
@@ -101,11 +101,16 @@ Makefile
   - `THRESHOLD_CENTS=1000`  # default 10€
   - `CSV_EXPORT_LIMIT=50000`
   - `CORS_ORIGINS=http://localhost:3000,http://localhost:5173`
+  - (Removed: ADMIN_PIN / TREASURER_PIN – per-user PINs only)
 - **Dev up:** `make dev` (uses docker-compose.dev.yml)
 - **Test:** `make test` (backend + frontend), `make test-backend`, `make test-frontend`
 - **Migrations:** `make migrate` (upgrade), `make migrate-generate msg="description"`
 - **Linting:** `make lint` (check), `make lint-fix` (auto-fix)
 - **Logs/Shell:** `make logs-backend`, `make shell-backend`, `make shell-db`
+ - **Frontend tests (direct in running dev containers):**
+   ```bash
+   docker compose -f infra/docker-compose.dev.yml exec frontend npm test --silent -- --run
+   ```
 
 ---
 
@@ -115,11 +120,12 @@ Makefile
 ### users
 - id (uuid, pk)
 - display_name (str)
-- email (str, unique, required) - Used for notifications and updates
+- email (str, unique, required in current implementation)
 - qr_code (str?, optional)
 - role (enum: user/treasurer)
 - is_active (bool)
 - created_at (ts)
+- pin_hash (str, required) — SHA-256 hash of user's PIN
 
 ### products
 - id (uuid, pk)
@@ -146,8 +152,8 @@ Makefile
 - note (str?)
 - created_at (ts)
 - created_by (fk users)
-- confirmed_at (ts?)
-- confirmed_by (fk users?)
+- confirmed_at (ts)
+- confirmed_by (fk users): must be different from created_by, must be a treasurer
 - status (enum: pending/confirmed/rejected)
 
 ### audit
@@ -161,12 +167,20 @@ Makefile
 
 ---
 
+## Roles
+- **User**: Can access dashboard, kiosk
+- **Treasurer**: All User rights + access products and treasurer page; initiates & confirms money moves (with two-person rule)
+- **Admin**: A special, unique and preconfigured user required for user CRUD, rotating the Admin PIN itself. Cannot be removed.
+
 ## UI / UX Notes
 - **Kiosk mode**: Fast booking in 2–3 clicks. User → Product → Confirm.
 - **Multi-user concurrency**: Ensure backend handles multiple parallel sessions without race conditions (use transactions).  
 - **Internationalization**: Use i18next in frontend, store strings in `/src/i18n/de.json` and `/src/i18n/en.json`. Default language: German. User can switch in UI.  
-- **Treasurer dashboard**: List of all balances, pending confirmations, product mgmt, CSV export.  
-- **User dashboard**: Current balance, consumption history, pending confirmations.  
+- **Treasurer dashboard**: Requires Treasurer role. List of all balances, pending confirmations, product mgmt, CSV export, money movement approvals
+- **Dashboard**: Overview of coffee fund balance, Allows selection of user which leads to user dashboard; top 3 coffee consumers, List of users below threshold, 
+- **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN
+**Users page**: Accessible to Treasurers (future: may require re-auth with treasurer's own PIN). List all users, create new users (must supply a PIN), edit existing users (can rotate their PIN), deactivate users.
+- **Products**: Requrires Treasurer role. List, create, edit, deactivate products.
 
 ---
 
@@ -178,15 +192,16 @@ Makefile
 - **Test Database**: Tests use SQLite with custom TypeDecorators for UUID/JSON compatibility
 
 ### Service Layer
-- **Balance Logic**: BalanceService calculates: `confirmed_deposits - confirmed_payouts - all_consumptions`
-- **Audit Trail**: Every mutation logged via AuditService with actor_id and structured metadata
-- **Two-Person Rule**: Money moves need creator ≠ confirmer, enforced in API layer
-- **User Creation**: Creating users with treasurer role requires PIN verification. Email field is mandatory and validated.
+- **Balance Logic**: `confirmed_deposits - confirmed_payouts - all_consumptions`
+- **Audit Trail**: Every mutation logged with actor_id + metadata.
+- **Two-Person Rule**: Money moves require different treasurer for creation vs confirmation.
+- **User Creation**: Requires per-user PIN (mandatory). Email required (current impl) for uniqueness.
+- **PIN Management**: Only per-user. No global rotation target; removal of legacy admin/tresurer reset flow.
 
 ### Frontend Components
-- **UserCreateModal**: Form-based modal for creating new users with email validation and role-based PIN input
-- **UserEditModal**: Modal for editing existing users (includes email field)
-- **Treasurer PIN**: PIN input is required when creating users with treasurer role
+- **UserCreateModal**: Supply display name, email, role, PIN.
+- **UserEditModal**: Can change display name, email, role, active flag, and optionally set a new PIN.
+- (Removed) Global Admin PIN gating — remove any stale UI expecting it.
 
 ### API Development
 - **Response Objects**: Use FastAPI Response for file downloads with proper headers:
@@ -209,15 +224,24 @@ Makefile
 ---
 
 ## Acceptance Criteria
-1. Multiple users can log consumptions simultaneously without data conflicts.  
-2. App UI can switch between German and English.  
-3. User can book a coffee in ≤3 clicks.  
-4. Treasurer can view balances, pending confirmations, export CSV.  
-5. Deposits/payouts require confirmation by user before balance changes.  
-6. All actions are logged in `audit` table.
-7. **Create User button is functional** and opens a modal with proper form validation.
-8. **Email address is required** for all users and used for notifications/updates.
-9. **PIN verification required** when creating users with treasurer role.
-10. **Email validation** ensures valid email format before user creation.
+1. Multiple users can log consumptions simultaneously without data conflicts.
+2. UI language toggle (DE/EN) works across sessions.
+3. Coffee booking flow: Select user -> select product -> confirm (≤3 clicks).
+4. Treasurer dashboard lists balances, pending money moves, product management, CSV export.
+5. Money moves enforce two-person rule (creator ≠ confirmer); pending until confirmed.
+6. All mutations recorded in `audit` with actor + metadata.
+7. Every user has a PIN; user creation fails without PIN; PIN changes hashed.
+8. No reliance on any global/shared PIN.
 
+## Migration Notes (Legacy Cleanup)
+- Removed endpoints: `/users/verify-pin`, `/users/change-pin` (global variants) replaced by `/users/verify-user-pin`, `/users/change-user-pin`.
+- Removed config/env: `ADMIN_PIN`, `TREASURER_PIN` — delete from `.env.example` and code once references are gone.
+- Remove Makefile targets: `admin-pin-reset` (or equivalent) – obsolete.
+- Ensure frontend no longer prompts for a global PIN; per-user PIN entry occurs only in contexts that logically require it (e.g., PIN change, maybe future sensitive action confirmation).
+
+## Pending Enhancements (Post-Refactor)
+- Add per-action PIN re-verification for sensitive treasurer operations.
+- Add rate limiting / lockout after repeated wrong PIN attempts.
+- Introduce optional email notifications for large deposits/payouts.
+- Replace `datetime.utcnow()` with timezone-aware `datetime.now(datetime.UTC)`.
 ---

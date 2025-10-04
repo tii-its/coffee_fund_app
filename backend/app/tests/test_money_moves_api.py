@@ -7,45 +7,64 @@ from uuid import uuid4
 
 
 @pytest.fixture
-def test_user(client):
-    """Create a test user"""
+def test_user(client, admin_bootstrap):
+    """Create a test user via admin wrapper"""
     import time
-    user_data = {
-        "display_name": "Test User",
-        "email": f"test.user.money.{int(time.time()*1000)}@example.com",
-        "role": "user",
-        "is_active": True
+    payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"Test User {int(time.time()*1000)}",
+            "role": "user",
+            "is_active": True,
+            "pin": "testpin123"
+        }
     }
-    response = client.post("/users/", json=user_data)
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 @pytest.fixture
-def test_treasurer(client):
-    """Create a test treasurer"""
+def test_treasurer(client, admin_bootstrap):
     import time
-    user_data = {
-        "display_name": "Test Treasurer", 
-        "email": f"test.treasurer.money.{int(time.time()*1000)}@example.com",
-        "role": "treasurer",
-        "is_active": True
+    treasurer_pin = "treasurerPIN123"
+    payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"Test Treasurer {int(time.time()*1000)}",
+            "role": "treasurer",
+            "is_active": True,
+            "pin": treasurer_pin
+        }
     }
-    response = client.post("/users/", json=user_data)
-    return response.json()
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
+    data = response.json()
+    data["_headers"] = {"x-actor-id": data["id"], "x-actor-pin": treasurer_pin}
+    return data
 
 
 @pytest.fixture
-def test_treasurer2(client):
-    """Create a second test treasurer"""
+def test_treasurer2(client, admin_bootstrap):
     import time
-    user_data = {
-        "display_name": "Test Treasurer 2", 
-        "email": f"test.treasurer2.money.{int(time.time()*1000)}@example.com",
-        "role": "treasurer",
-        "is_active": True
+    treasurer_pin = "treasurerPIN456"
+    payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"Test Treasurer 2 {int(time.time()*1000)}",
+            "role": "treasurer",
+            "is_active": True,
+            "pin": treasurer_pin
+        }
     }
-    response = client.post("/users/", json=user_data)
-    return response.json()
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201, response.text
+    data = response.json()
+    data["_headers"] = {"x-actor-id": data["id"], "x-actor-pin": treasurer_pin}
+    return data
 
 
 @pytest.fixture
@@ -62,8 +81,9 @@ def sample_money_move_data(test_user):
 def test_create_money_move_deposit(client, test_user, test_treasurer, sample_money_move_data):
     """Test creating a deposit money move"""
     response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     assert response.status_code == 201
     
@@ -87,8 +107,9 @@ def test_create_money_move_payout(client, test_user, test_treasurer):
         "note": "Test payout"
     }
     response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=money_move_data
+        "/money-moves/",
+        json=money_move_data,
+        headers=test_treasurer["_headers"],
     )
     assert response.status_code == 201
     
@@ -106,15 +127,16 @@ def test_create_money_move_user_not_found(client, test_treasurer):
         "note": "Test"
     }
     response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=money_move_data
+        "/money-moves/",
+        json=money_move_data,
+        headers=test_treasurer["_headers"],
     )
     assert response.status_code == 404
     assert "User not found" in response.json()["detail"]
 
 
-def test_create_money_move_creator_not_found(client, test_user):
-    """Test creating money move with invalid creator"""
+def test_create_money_move_invalid_headers(client, test_user):
+    """Test creating money move with invalid treasurer headers"""
     money_move_data = {
         "type": "deposit",
         "user_id": test_user["id"],
@@ -122,25 +144,28 @@ def test_create_money_move_creator_not_found(client, test_user):
         "note": "Test"
     }
     response = client.post(
-        f"/money-moves/?creator_id={uuid4()}", 
-        json=money_move_data
+        "/money-moves/",
+        json=money_move_data,
+        headers={"x-actor-id": str(uuid4()), "x-actor-pin": "wrong"},
     )
-    assert response.status_code == 404
-    assert "Creator not found" in response.json()["detail"]
+    assert response.status_code in (403, 404)
 
 
-def test_create_money_move_non_treasurer_creator(client, test_user):
+def test_create_money_move_non_treasurer_creator(client, test_user, admin_bootstrap):
     """Test creating money move with non-treasurer creator"""
     # Create another regular user
     import time
-    user2_data = {
-        "display_name": "Regular User 2",
-        "email": f"regular.user2.money.{int(time.time()*1000)}@example.com",
-        "role": "user",
-        "is_active": True
+    user2_payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"Regular User 2 {int(time.time()*1000)}",
+            "role": "user",
+            "is_active": True,
+            "pin": "testpin123"
+        }
     }
-    user2_response = client.post("/users/", json=user2_data)
-    user2 = user2_response.json()
+    user2 = client.post("/users/", json=user2_payload).json()
     
     money_move_data = {
         "type": "deposit",
@@ -149,19 +174,21 @@ def test_create_money_move_non_treasurer_creator(client, test_user):
         "note": "Test"
     }
     response = client.post(
-        f"/money-moves/?creator_id={user2['id']}", 
-        json=money_move_data
+        "/money-moves/",
+        json=money_move_data,
+        headers={"x-actor-id": user2["id"], "x-actor-pin": "testpin123"},
     )
     assert response.status_code == 403
-    assert "Only treasurers can create money moves" in response.json()["detail"]
+    assert "Only treasurers" in response.json()["detail"]
 
 
 def test_get_money_moves(client, test_user, test_treasurer, sample_money_move_data):
     """Test getting all money moves"""
     # Create a money move first
     client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     
     response = client.get("/money-moves/")
@@ -177,8 +204,9 @@ def test_get_money_moves_with_filters(client, test_user, test_treasurer, sample_
     """Test getting money moves with filters"""
     # Create a money move
     client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     
     # Filter by user_id
@@ -203,10 +231,11 @@ def test_get_money_moves_with_filters(client, test_user, test_treasurer, sample_
 
 def test_get_pending_money_moves(client, test_user, test_treasurer, sample_money_move_data):
     """Test getting pending money moves"""
-    # Create a pending money move
+    # Create a pending money move using treasurer headers (remains pending until confirmed)
     client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     
     response = client.get("/money-moves/pending")
@@ -221,8 +250,9 @@ def test_get_money_move_by_id(client, test_user, test_treasurer, sample_money_mo
     """Test getting specific money move"""
     # Create a money move
     create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     money_move_id = create_response.json()["id"]
     
@@ -245,14 +275,19 @@ def test_confirm_money_move(client, test_user, test_treasurer, test_treasurer2, 
     """Test confirming a money move"""
     # Create a money move
     create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
-    money_move_id = create_response.json()["id"]
+    assert create_response.status_code == 201, f"Create failed: {create_response.status_code} {create_response.text}"
+    money_move_json = create_response.json()
+    assert "id" in money_move_json, f"Missing id in response: {money_move_json}"
+    money_move_id = money_move_json["id"]
     
     # Confirm with different treasurer
     response = client.patch(
-        f"/money-moves/{money_move_id}/confirm?confirmer_id={test_treasurer2['id']}"
+        f"/money-moves/{money_move_id}/confirm",
+        headers=test_treasurer2["_headers"],
     )
     assert response.status_code == 200
     
@@ -265,7 +300,8 @@ def test_confirm_money_move(client, test_user, test_treasurer, test_treasurer2, 
 def test_confirm_money_move_not_found(client, test_treasurer):
     """Test confirming non-existent money move"""
     response = client.patch(
-        f"/money-moves/{uuid4()}/confirm?confirmer_id={test_treasurer['id']}"
+        f"/money-moves/{uuid4()}/confirm",
+        headers=test_treasurer["_headers"],
     )
     assert response.status_code == 404
     assert "Money move not found" in response.json()["detail"]
@@ -275,18 +311,21 @@ def test_confirm_money_move_not_pending(client, test_user, test_treasurer, test_
     """Test confirming non-pending money move"""
     # Create and confirm a money move
     create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     money_move_id = create_response.json()["id"]
     
     client.patch(
-        f"/money-moves/{money_move_id}/confirm?confirmer_id={test_treasurer2['id']}"
+        f"/money-moves/{money_move_id}/confirm",
+        headers=test_treasurer2["_headers"],
     )
     
     # Try to confirm again
     response = client.patch(
-        f"/money-moves/{money_move_id}/confirm?confirmer_id={test_treasurer2['id']}"
+        f"/money-moves/{money_move_id}/confirm",
+        headers=test_treasurer2["_headers"],
     )
     assert response.status_code == 400
     assert "Money move is not pending" in response.json()["detail"]
@@ -296,14 +335,16 @@ def test_confirm_money_move_self_confirmation(client, test_user, test_treasurer,
     """Test self-confirmation not allowed"""
     # Create a money move
     create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     money_move_id = create_response.json()["id"]
     
     # Try to confirm with same user who created it
     response = client.patch(
-        f"/money-moves/{money_move_id}/confirm?confirmer_id={test_treasurer['id']}"
+        f"/money-moves/{money_move_id}/confirm",
+        headers=test_treasurer["_headers"],
     )
     assert response.status_code == 400
     assert "Cannot confirm own money move" in response.json()["detail"]
@@ -313,14 +354,16 @@ def test_reject_money_move(client, test_user, test_treasurer, test_treasurer2, s
     """Test rejecting a money move"""
     # Create a money move
     create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     money_move_id = create_response.json()["id"]
     
     # Reject with different treasurer
     response = client.patch(
-        f"/money-moves/{money_move_id}/reject?rejector_id={test_treasurer2['id']}"
+        f"/money-moves/{money_move_id}/reject",
+        headers=test_treasurer2["_headers"],
     )
     assert response.status_code == 200
     
@@ -333,7 +376,8 @@ def test_reject_money_move(client, test_user, test_treasurer, test_treasurer2, s
 def test_reject_money_move_not_found(client, test_treasurer):
     """Test rejecting non-existent money move"""
     response = client.patch(
-        f"/money-moves/{uuid4()}/reject?rejector_id={test_treasurer['id']}"
+        f"/money-moves/{uuid4()}/reject",
+        headers=test_treasurer["_headers"],
     )
     assert response.status_code == 404
     assert "Money move not found" in response.json()["detail"]
@@ -343,18 +387,21 @@ def test_reject_money_move_not_pending(client, test_user, test_treasurer, test_t
     """Test rejecting non-pending money move"""
     # Create and reject a money move
     create_response = client.post(
-        f"/money-moves/?creator_id={test_treasurer['id']}", 
-        json=sample_money_move_data
+        "/money-moves/",
+        json=sample_money_move_data,
+        headers=test_treasurer["_headers"],
     )
     money_move_id = create_response.json()["id"]
     
     client.patch(
-        f"/money-moves/{money_move_id}/reject?rejector_id={test_treasurer2['id']}"
+        f"/money-moves/{money_move_id}/reject",
+        headers=test_treasurer2["_headers"],
     )
     
     # Try to reject again
     response = client.patch(
-        f"/money-moves/{money_move_id}/reject?rejector_id={test_treasurer2['id']}"
+        f"/money-moves/{money_move_id}/reject",
+        headers=test_treasurer2["_headers"],
     )
     assert response.status_code == 400
     assert "Money move is not pending" in response.json()["detail"]

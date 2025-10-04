@@ -92,12 +92,8 @@ shell-frontend:
 shell-db:
 	docker compose -f infra/docker-compose.dev.yml exec db psql -U coffee -d coffee
 
-# Treasurer PIN reset
-reset-treasurer-pin:
-	# Usage: make reset-treasurer-pin [pin=9876]
-	# If pin not provided, defaults to TREASURER_PIN env or 1234
-	@if [ -z "$$pin" ]; then \
-		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_treasurer_pin ; \
-	else \
-		docker compose -f infra/docker-compose.dev.yml exec backend python -m app.scripts.reset_treasurer_pin $$pin ; \
-	fi
+# (Removed) Global PIN reset targets: PINs are per-user and managed via user endpoints.
+
+# Bootstrap initial admin (idempotent: only creates if none exists)
+bootstrap-admin:
+	docker compose -f infra/docker-compose.dev.yml exec backend python -m scripts.bootstrap_admin

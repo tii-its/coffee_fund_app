@@ -24,39 +24,48 @@ interface AppState {
   setTreasurerAuthenticated: (authenticated: boolean) => void
   authTimestamp: number | null
   setAuthTimestamp: (timestamp: number | null) => void
+
+  // Deprecated actor storage removed – per-action PIN entry now required
+
 }
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set, _get) => ({
+    (set: any, _get: any) => ({
       selectedUser: null,
-      setSelectedUser: (user) => set({ selectedUser: user }),
+  setSelectedUser: (user: User | null) => set({ selectedUser: user }),
       
       language: 'de', // Default to German as specified
-      setLanguage: (language) => set({ language }),
+  setLanguage: (language: 'en' | 'de') => set({ language }),
       
       sidebarOpen: true,
-      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
       
       currentUser: null,
-      setCurrentUser: (user) => set({ currentUser: user }),
+  setCurrentUser: (user: User | null) => set({ currentUser: user }),
       
       treasurerAuthenticated: false,
-      setTreasurerAuthenticated: (authenticated) => {
+  setTreasurerAuthenticated: (authenticated: boolean) => {
         const timestamp = authenticated ? Date.now() : null
         set({ treasurerAuthenticated: authenticated, authTimestamp: timestamp })
       },
       authTimestamp: null,
-      setAuthTimestamp: (timestamp) => set({ authTimestamp: timestamp }),
+  setAuthTimestamp: (timestamp: number | null) => set({ authTimestamp: timestamp }),
+
+      // No stored actor credentials anymore (per-action PIN entry)
+
+    // Removed admin PIN state (legacy global admin pin model)
     }),
     {
       name: 'coffee-fund-store',
-      partialize: (state) => ({
+  partialize: (state: AppState) => ({
         language: state.language,
         sidebarOpen: state.sidebarOpen,
         currentUser: state.currentUser,
         treasurerAuthenticated: state.treasurerAuthenticated,
         authTimestamp: state.authTimestamp,
+    // actor removed from persistence
+        // adminAuthenticated & adminPin intentionally not persisted for security
       }),
     }
   )
