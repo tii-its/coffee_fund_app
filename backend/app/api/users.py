@@ -118,7 +118,7 @@ def get_users(
     db: Session = Depends(get_db),
 ):
     """Get all users (public read access for dashboard and kiosk functionality)"""
-    query = db.query(User)
+    query = db.query(User).filter(User.is_deleted == False)
     if active_only:
         query = query.filter(User.is_active == True)
 
@@ -180,14 +180,15 @@ def update_user(
 @router.delete("/{user_id}")
 def delete_user(
     user_id: UUID,
+    force: bool = Query(False, description="Force delete user even with related records (soft delete)"),
     db: Session = Depends(get_db),
     admin=Depends(admin_actor)
 ):
-    """Hard delete a user (admin only).
+    """Delete a user (admin only).
 
-    Permanently removes the user row. If the user has related domain records
-    (consumptions, money moves, audit entries) deletion is blocked to preserve
-    referential integrity. Caller must first handle or archive those records.
+    If user has no related records, performs hard delete (permanent removal).
+    If user has related records and force=False, returns 409 with confirmation needed.
+    If user has related records and force=True, performs soft delete (sets is_active=False).
     The special admin performing the action cannot delete themselves if they
     are the only remaining admin (safety guard).
     """
@@ -197,11 +198,11 @@ def delete_user(
 
     # Prevent deleting the last remaining admin to avoid lock-out
     if user.role == UserRole.ADMIN:
-        remaining_admins = db.query(User).filter(User.role == UserRole.ADMIN, User.id != user.id).count()
+        remaining_admins = db.query(User).filter(User.role == UserRole.ADMIN, User.id != user.id, User.is_active == True, User.is_deleted == False).count()
         if remaining_admins == 0:
             raise HTTPException(status_code=400, detail="Cannot delete the last remaining admin user")
 
-    # Check for dependent records; block deletion if any exist
+    # Check for dependent records
     has_consumptions = db.query(Consumption).filter(Consumption.user_id == user.id).first() is not None
     has_created_consumptions = db.query(Consumption).filter(Consumption.created_by == user.id).first() is not None
     has_money_moves = db.query(MoneyMove).filter(MoneyMove.user_id == user.id).first() is not None
@@ -209,29 +210,65 @@ def delete_user(
     has_confirmed_money_moves = db.query(MoneyMove).filter(MoneyMove.confirmed_by == user.id).first() is not None
     has_audit_entries = db.query(Audit).filter(Audit.actor_id == user.id).first() is not None
 
-    if any([
+    has_related_records = any([
         has_consumptions,
         has_created_consumptions,
         has_money_moves,
         has_created_money_moves,
         has_confirmed_money_moves,
         has_audit_entries,
-    ]):
-        raise HTTPException(status_code=409, detail="Cannot delete user with related records")
+    ])
 
-    db.delete(user)
-    db.commit()
+    if has_related_records and not force:
+        # Return special response indicating confirmation needed
+        raise HTTPException(
+            status_code=409, 
+            detail={
+                "error": "user_has_related_records",
+                "message": "User has related records. Deletion will deactivate the user permanently but keep their history.",
+                "related_records": {
+                    "consumptions": has_consumptions,
+                    "created_consumptions": has_created_consumptions,
+                    "money_moves": has_money_moves,
+                    "created_money_moves": has_created_money_moves,
+                    "confirmed_money_moves": has_confirmed_money_moves,
+                    "audit_entries": has_audit_entries
+                },
+                "confirmation_required": True
+            }
+        )
 
-    AuditService.log_action(
-        db=db,
-        actor_id=admin.id,
-        action="delete",
-        entity="user",
-        entity_id=user_id,
-        meta_data={"display_name": user.display_name, "hard_delete": True}
-    )
+    if has_related_records and force:
+        # Soft delete: mark as deleted (but keep active status for clarity)
+        user.is_deleted = True
+        db.commit()
+        db.refresh(user)
 
-    return {"message": "User permanently deleted"}
+        AuditService.log_action(
+            db=db,
+            actor_id=admin.id,
+            action="delete",
+            entity="user",
+            entity_id=user_id,
+            meta_data={"display_name": user.display_name, "soft_delete": True, "forced": True}
+        )
+
+        return {"message": "User deleted permanently (soft delete)", "type": "soft_delete"}
+    else:
+        # Hard delete: no related records
+        db.delete(user)
+        db.commit()
+
+        AuditService.log_action(
+            db=db,
+            actor_id=admin.id,
+            action="delete",
+            entity="user",
+            entity_id=user_id,
+            meta_data={"display_name": user.display_name, "hard_delete": True}
+        )
+
+        return {"message": "User permanently deleted", "type": "hard_delete"}
 
 
 # Removed legacy global /verify-pin endpoint (deprecated)

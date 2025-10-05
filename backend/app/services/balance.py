@@ -35,7 +35,7 @@ class BalanceService:
     @staticmethod
     def get_all_user_balances(db: Session) -> list[UserBalance]:
         """Get balance for all active users"""
-        users = db.query(User).filter(User.is_active == True).all()
+        users = db.query(User).filter(User.is_active == True, User.is_deleted == False).all()
         balances = []
 
         for user in users:

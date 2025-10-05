@@ -57,11 +57,32 @@
     "createUser": "Create User",
     "editUser": "Edit User",
     "deleteUser": "Delete User",
-    "deleteConfirmation": "Are you sure you want to delete the user '{{name}}'?",
     "qrCodePlaceholder": "QR Code (optional)",
     "userCreated": "User created successfully",
     "userUpdated": "User updated successfully",
-    "userDeleted": "User deleted successfully"
+    "userDeleted": "User deleted successfully",
+    "deleteError": {
+      "hasRelatedRecords": "Cannot delete user with related records (consumptions, money moves, etc.)",
+      "lastAdmin": "Cannot delete the last remaining admin user",
+      "general": "Failed to delete user. Please try again."
+    },
+    "deleteConfirmation": {
+      "warningTitle": "User has related records",
+      "warningMessage": "The user \"{{userName}}\" has related records. Deleting will permanently deactivate the user but keep their history for data integrity.",
+      "relatedRecords": "Related records:",
+      "consequences": "After deletion, the user will be permanently deactivated and cannot be restored, but their transaction history will be preserved.", 
+      "simpleMessage": "Are you sure you want to permanently delete the user \"{{userName}}\"? This action cannot be undone.",
+      "deactivate": "Deactivate User",
+      "delete": "Delete User",
+      "records": {
+        "consumptions": "Consumptions",
+        "createdConsumptions": "Created consumptions", 
+        "moneyMoves": "Money moves",
+        "createdMoneyMoves": "Created money moves",
+        "confirmedMoneyMoves": "Confirmed money moves",
+        "auditEntries": "Audit entries"
+      }
+    }
   },
   "product": {
     "name": "Product Name",

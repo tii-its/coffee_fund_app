@@ -8,7 +8,7 @@ import type { User, UserUpdate, UserCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
 import UserCreateModal from '@/components/UserCreateModal'
-import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
+import UserDeleteConfirmationModal from '@/components/UserDeleteConfirmationModal'
 // usersApi already imported above
 
 const Users: React.FC = () => {
@@ -18,8 +18,11 @@ const Users: React.FC = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const { requestPin, pinModal } = usePerActionPin()
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    hasRelatedRecords: boolean
+    relatedRecords?: any
+  } | null>(null)
 
   // Admin gating removed: treasurer role should gate access (handled by route protection outside this component)
   
@@ -53,8 +56,8 @@ const Users: React.FC = () => {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, userUpdate }: { userId: string, userUpdate: UserUpdate }) => {
-      const { actorId, pin } = await requestPin()
-      if (!actorId || !pin) throw new Error('PIN required')
+      const { actorId, pin } = await requestAdminPin()
+      if (!actorId || !pin) throw new Error('Admin PIN required')
       return usersApi.update(userId, userUpdate, { actorId, pin })
     },
     onSuccess: () => {
@@ -68,17 +71,38 @@ const Users: React.FC = () => {
   })
 
   const deleteUserMutation = useMutation({
-    mutationFn: async ({ userId }: { userId: string }) => {
-      const { actorId, pin } = await requestPin()
-      if (!actorId || !pin) throw new Error('PIN required')
-      return usersApi.delete(userId, { actorId, pin })
+    mutationFn: async ({ userId, force = false }: { userId: string, force?: boolean }) => {
+      const { actorId, pin } = await requestAdminPin()
+      if (!actorId || !pin) throw new Error('Admin PIN required')
+      return usersApi.delete(userId, { actorId, pin }, force)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setSelectedUser(null)
+      setDeleteModalOpen(false)
+      setDeleteConfirmation(null)
     },
     onError: (error: any) => {
       console.error('Failed to delete user:', error)
+      // Handle specific error cases
+      if (error.response?.status === 409) {
+        const errorDetail = error.response?.data?.detail
+        if (typeof errorDetail === 'object' && errorDetail.confirmation_required) {
+          // Show confirmation dialog with related records info
+          setDeleteConfirmation({
+            hasRelatedRecords: true,
+            relatedRecords: errorDetail.related_records
+          })
+          setDeleteModalOpen(true)
+          return // Don't show error, show confirmation instead
+        } else {
+          alert(t('user.deleteError.hasRelatedRecords', 'Cannot delete user with related records'))
+        }
+      } else if (error.response?.status === 400) {
+        alert(t('user.deleteError.lastAdmin', 'Cannot delete the last remaining admin user'))
+      } else {
+        alert(t('user.deleteError.general', 'Failed to delete user. Please try again.'))
+      }
     },
   })
 
@@ -99,8 +123,11 @@ const Users: React.FC = () => {
   const handleDeleteConfirm = () => {
     if (!selectedUser) return
     deleteUserMutation.mutate({ userId: selectedUser.id })
-    setDeleteModalOpen(false)
-    setSelectedUser(null)
+  }
+
+  const handleForceDeleteConfirm = () => {
+    if (!selectedUser) return
+    deleteUserMutation.mutate({ userId: selectedUser.id, force: true })
   }
 
   const handleCreateSubmit = async (userCreate: UserCreate) => {
@@ -232,18 +259,20 @@ const Users: React.FC = () => {
         isLoading={updateUserMutation.isPending}
       />
 
-      <DeleteConfirmModal
+      <UserDeleteConfirmationModal
         isOpen={deleteModalOpen}
         onClose={() => {
-          setDeleteModalOpen(false)
+          setDeleteModalOpen(false) 
           setSelectedUser(null)
+          setDeleteConfirmation(null)
         }}
         onConfirm={handleDeleteConfirm}
-        title={t('user.deleteUser')}
-        message={selectedUser ? t('user.deleteConfirmation', { name: selectedUser.display_name }) : ''}
+        onForceConfirm={handleForceDeleteConfirm}
+        userName={selectedUser?.display_name || ''}
+        hasRelatedRecords={deleteConfirmation?.hasRelatedRecords || false}
+        relatedRecords={deleteConfirmation?.relatedRecords}
       />
 
-      {pinModal}
       {adminPinModal}
   </div>
   )

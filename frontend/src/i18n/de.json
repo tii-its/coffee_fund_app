@@ -57,11 +57,32 @@
     "createUser": "Benutzer erstellen",
     "editUser": "Benutzer bearbeiten",
     "deleteUser": "Benutzer löschen",
-    "deleteConfirmation": "Möchten Sie den Benutzer '{{name}}' wirklich löschen?",
     "qrCodePlaceholder": "QR-Code (optional)",
     "userCreated": "Benutzer erfolgreich erstellt",
     "userUpdated": "Benutzer erfolgreich aktualisiert",
-    "userDeleted": "Benutzer erfolgreich gelöscht"
+    "userDeleted": "Benutzer erfolgreich gelöscht",
+    "deleteError": {
+      "hasRelatedRecords": "Benutzer mit verknüpften Datensätzen (Verbrauch, Geldtransaktionen, etc.) kann nicht gelöscht werden",
+      "lastAdmin": "Der letzte verbleibende Admin-Benutzer kann nicht gelöscht werden",
+      "general": "Benutzer löschen fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
+    "deleteConfirmation": {
+      "warningTitle": "Benutzer hat verknüpfte Datensätze",
+      "warningMessage": "Der Benutzer \"{{userName}}\" hat verknüpfte Datensätze. Das Löschen wird den Benutzer permanent deaktivieren, aber seine Historie für die Datenintegrität beibehalten.",
+      "relatedRecords": "Verknüpfte Datensätze:",
+      "consequences": "Nach dem Löschen wird der Benutzer permanent deaktiviert und kann nicht wiederhergestellt werden, aber seine Transaktionshistorie wird erhalten bleiben.",
+      "simpleMessage": "Sind Sie sicher, dass Sie den Benutzer \"{{userName}}\" permanent löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "deactivate": "Benutzer deaktivieren",
+      "delete": "Benutzer löschen",
+      "records": {
+        "consumptions": "Verbrauch",
+        "createdConsumptions": "Erstellter Verbrauch",
+        "moneyMoves": "Geldtransaktionen",
+        "createdMoneyMoves": "Erstellte Geldtransaktionen",
+        "confirmedMoneyMoves": "Bestätigte Geldtransaktionen",
+        "auditEntries": "Audit-Einträge"
+      }
+    }
   },
   "product": {
     "name": "Produktname",

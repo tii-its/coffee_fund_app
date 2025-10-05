@@ -64,8 +64,8 @@ export const usersApi = {
   update: (id: string, user: UserUpdate, actor: ActorHeaders) =>
     api.put<User>(`/users/${id}`, user, withActor({}, actor)),
   
-  delete: (id: string, actor: ActorHeaders) =>
-    api.delete(`/users/${id}`, withActor({}, actor)),
+  delete: (id: string, actor: ActorHeaders, force?: boolean) =>
+    api.delete(`/users/${id}`, withActor({ params: force ? { force } : {} }, actor)),
   
   getBalance: (id: string) =>
     api.get<UserBalance>(`/users/${id}/balance`),
