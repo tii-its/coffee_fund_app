@@ -9,6 +9,7 @@ A team coffee fund management application with consumption tracking and cash mov
  Multi-user concurrent support (kiosk, desktop, mobile)
  Internationalization support (German/English)
  Role-based access (User/Treasurer) — every user (including treasurers) has their own mandatory PIN (no global/shared PIN)
+- PIN recovery: users can recover their own PIN, admins can reset any PIN to default (1234)
  Audit logging for all actions
 - User hard deletion (admin-only, permanently removes user if no related records; last remaining admin cannot be deleted)
 

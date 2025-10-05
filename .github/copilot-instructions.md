@@ -178,8 +178,8 @@ Makefile
 - **Internationalization**: Use i18next in frontend, store strings in `/src/i18n/de.json` and `/src/i18n/en.json`. Default language: German. User can switch in UI.  
 - **Treasurer dashboard**: Requires Treasurer role. List of all balances, pending confirmations, product mgmt, CSV export, money movement approvals
 - **Dashboard**: Overview of coffee fund balance, Allows selection of user which leads to user dashboard; top 3 coffee consumers, List of users below threshold, 
-- **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN
-**Users page**: Accessible to Treasurers (future: may require re-auth with treasurer's own PIN). List all users, create new users (must supply a PIN), edit existing users (can rotate their PIN), deactivate users.
+- **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN, recover user PIN (self-service)
+**Users page**: Accessible to Treasurers (future: may require re-auth with treasurer's own PIN). List all users, create new users (must supply a PIN), edit existing users (can rotate their PIN or reset to default), deactivate users.
 - **Products**: Requrires Treasurer role. List, create, edit, deactivate products.
 
 ---
@@ -197,6 +197,7 @@ Makefile
 - **Two-Person Rule**: Money moves require different treasurer for creation vs confirmation.
 - **User Creation**: Requires per-user PIN (mandatory). Email required (current impl) for uniqueness.
 - **PIN Management**: Only per-user. No global rotation target; removal of legacy admin/tresurer reset flow.
+- **PIN Recovery**: Users can recover their own PIN via Dashboard (requires current PIN verification). Admins can reset any user's PIN to default "1234" via Users page (requires admin PIN confirmation).
 
 ### Frontend Components
 - **UserCreateModal**: Supply display name, email, role, PIN.
