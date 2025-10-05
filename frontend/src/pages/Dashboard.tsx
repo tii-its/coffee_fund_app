@@ -7,6 +7,8 @@ import { useAppStore } from '@/store'
 import BalanceCard from '@/components/BalanceCard'
 import UserPicker from '@/components/UserPicker'
 import TopUpBalanceModal from '@/components/TopUpBalanceModal'
+import PinRecoveryModal from '@/components/PinRecoveryModal'
+import PinChangeModal from '@/components/PinChangeModal'
 import type { User, MoneyMoveCreate } from '@/api/types'
 
 const Dashboard: React.FC = () => {
@@ -15,6 +17,8 @@ const Dashboard: React.FC = () => {
   const { currentUser } = useAppStore()
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false)
+  const [isPinRecoveryModalOpen, setIsPinRecoveryModalOpen] = useState(false)
+  const [isPinChangeModalOpen, setIsPinChangeModalOpen] = useState(false)
 
   // Fetch all users for selection
   const { data: users = [] } = useQuery({
@@ -253,14 +257,33 @@ const Dashboard: React.FC = () => {
           <div className="flex-1">
             <BalanceCard balance={userBalance} />
           </div>
-          {currentUser?.role === 'treasurer' && (
-            <button
-              onClick={() => setIsTopUpModalOpen(true)}
-              className="btn btn-success px-4 py-2"
-            >
-              {t('moneyMove.topUpBalance')}
-            </button>
-          )}
+          <div className="flex gap-2">
+            {currentUser?.role === 'treasurer' && (
+              <button
+                onClick={() => setIsTopUpModalOpen(true)}
+                className="btn btn-success px-4 py-2"
+              >
+                {t('moneyMove.topUpBalance')}
+              </button>
+            )}
+            {/* PIN Management - show if user is viewing their own profile */}
+            {currentUser && selectedUser && currentUser.id === selectedUser.id && (
+              <>
+                <button
+                  onClick={() => setIsPinChangeModalOpen(true)}
+                  className="btn btn-outline px-4 py-2"
+                >
+                  {t('pin.change')}
+                </button>
+                <button
+                  onClick={() => setIsPinRecoveryModalOpen(true)}
+                  className="btn btn-outline btn-warning px-4 py-2"
+                >
+                  {t('pin.recoverPin')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -336,6 +359,25 @@ const Dashboard: React.FC = () => {
         onSubmit={handleTopUpBalance}
         user={selectedUser}
         isLoading={createMoneyMoveMutation.isPending}
+      />
+
+      {/* PIN Change Modal */}
+      <PinChangeModal
+        isOpen={isPinChangeModalOpen}
+        onClose={() => setIsPinChangeModalOpen(false)}
+        onSuccess={() => {
+          // Optionally show success message
+        }}
+      />
+
+      {/* PIN Recovery Modal */}
+      <PinRecoveryModal
+        isOpen={isPinRecoveryModalOpen}
+        onClose={() => setIsPinRecoveryModalOpen(false)}
+        onSuccess={() => {
+          // Optionally show success message
+        }}
+        user={selectedUser}
       />
     </div>
   )

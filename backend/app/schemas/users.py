@@ -53,3 +53,15 @@ class AdminUserCreateRequest(BaseModel):
     actor_id: UUID
     actor_pin: str
     user: UserCreate
+
+
+class PinResetRequest(BaseModel):
+    """Admin request to reset user PIN to default"""
+    pass  # No additional data needed, actor info comes from headers
+
+
+class PinRecoveryRequest(BaseModel):
+    """User request to recover their PIN"""
+    new_pin: str
+    verification_method: str  # 'current_pin' or 'email' 
+    verification_data: str   # the current PIN or email confirmation token

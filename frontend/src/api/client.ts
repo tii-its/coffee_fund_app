@@ -85,6 +85,29 @@ export const usersApi = {
     api.get<UserBalance[]>('/users/balances/above-threshold', {
       params: { threshold_cents },
     }),
+
+  // PIN Management
+  verifyPin: (user_id: string, pin: string) =>
+    api.post<{ message: string }>('/users/verify-user-pin', { user_id, pin }),
+
+  changePin: (current_pin: string, new_pin: string, actor_id?: string) =>
+    api.post<{ message: string }>('/users/change-user-pin', { 
+      user_id: actor_id, 
+      current_pin, 
+      new_pin 
+    }, { params: actor_id ? { actor_id } : {} }),
+
+  // PIN Recovery - Reset PIN to default (admin only)
+  resetPin: (user_id: string, actor: ActorHeaders) =>
+    api.put<{ message: string }>(`/users/${user_id}/reset-pin`, {}, withActor({}, actor)),
+
+  // PIN Recovery - User self-recovery
+  recoverPin: (user_id: string, new_pin: string, verification_method: 'current_pin' | 'email', verification_data: string) =>
+    api.post<{ message: string }>(`/users/${user_id}/recover-pin`, { 
+      new_pin,
+      verification_method,
+      verification_data
+    }),
 }
 
 // Products API
