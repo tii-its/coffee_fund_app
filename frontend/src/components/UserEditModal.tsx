@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useMutation } from '@tanstack/react-query'
+import { usersApi } from '@/api/client'
+import { usePerActionPin } from '@/hooks/usePerActionPin'
 import type { User, UserUpdate } from '@/api/types'
 
 interface UserEditModalProps {
@@ -8,6 +11,7 @@ interface UserEditModalProps {
   user: User | null
   onSubmit: (userUpdate: UserUpdate) => void | Promise<void>
   isLoading?: boolean
+  onPinReset?: () => void  // Callback when PIN is reset
 }
 
 const UserEditModal: React.FC<UserEditModalProps> = ({
@@ -16,10 +20,33 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   user,
   onSubmit,
   isLoading = false,
+  onPinReset,
 }) => {
   const { t } = useTranslation()
   const [formData, setFormData] = useState<UserUpdate>({})
   const [error, setError] = useState('')
+
+  // PIN reset functionality for admins
+  const { requestPin, pinModal } = usePerActionPin({ 
+    requiredRole: 'admin',
+    title: t('pin.resetPinConfirmation')
+  })
+
+  const resetPinMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('No user selected')
+      const { actorId, pin } = await requestPin()
+      if (!actorId || !pin) throw new Error('Admin PIN required')
+      return usersApi.resetPin(user.id, { actorId, pin })
+    },
+    onSuccess: () => {
+      onPinReset?.()
+      setError('')
+    },
+    onError: (error: any) => {
+      setError(error.response?.data?.detail || t('pin.resetError'))
+    },
+  })
 
   useEffect(() => {
     if (user) {
@@ -124,6 +151,23 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
                 {t('common.active')}
               </label>
             </div>
+
+            {/* PIN Reset Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">{t('pin.pinManagement')}</h4>
+              <p className="text-xs text-gray-500 mb-3">{t('pin.resetDescription')}</p>
+              <button
+                type="button"
+                onClick={() => resetPinMutation.mutate()}
+                disabled={isLoading || resetPinMutation.isPending}
+                className="w-full px-3 py-2 text-sm bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resetPinMutation.isPending ? t('common.loading') : t('pin.resetToDefault')}
+              </button>
+              {resetPinMutation.isSuccess && (
+                <p className="text-green-600 text-xs mt-1">{t('pin.resetSuccess')}</p>
+              )}
+            </div>
           </div>
 
           <div className="mb-4">
@@ -151,6 +195,9 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
             </button>
           </div>
         </form>
+        
+        {/* PIN modal */}
+        {pinModal}
       </div>
     </div>
   )

@@ -2,59 +2,42 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { usersApi } from '@/api/client'
-import { useAppStore } from '@/store'
+import type { User } from '@/api/types'
 
-interface PinChangeModalProps {
+interface PinRecoveryModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  user: User | null
 }
 
-const PinChangeModal: React.FC<PinChangeModalProps> = ({
+const PinRecoveryModal: React.FC<PinRecoveryModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  user,
 }) => {
   const { t } = useTranslation()
-  const { currentUser } = useAppStore()
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
 
-  const changePinMutation = useMutation({
+  const recoverPinMutation = useMutation({
     mutationFn: ({ currentPin, newPin }: { currentPin: string; newPin: string }) => {
-      if (!currentUser?.id) throw new Error(t('pin.noUserSelected'))
-      return usersApi.changePin(currentPin, newPin, currentUser.id)
+      if (!user) throw new Error('No user selected')
+      return usersApi.recoverPin(user.id, newPin, 'current_pin', currentPin)
     },
     onSuccess: () => {
-      setSuccess(true)
+      setCurrentPin('')
+      setNewPin('')
+      setConfirmPin('')
       setError('')
-      setTimeout(() => {
-        setSuccess(false)
-        setCurrentPin('')
-        setNewPin('')
-        setConfirmPin('')
-        onSuccess?.()
-        onClose()
-      }, 900) // brief confirmation
+      onSuccess?.()
+      onClose()
     },
     onError: (error: any) => {
-      // Normalize possible backend error shapes
-      const detail = error?.response?.data?.detail
-      let message: string
-      if (Array.isArray(detail)) {
-        // Pydantic validation errors array
-        message = detail.map((d: any) => d.msg || d.type || 'validation error').join('; ')
-      } else if (typeof detail === 'string') {
-        message = detail
-      } else if (error.message) {
-        message = error.message
-      } else {
-        message = t('pin.changeError')
-      }
-      setError(message)
+      setError(error.response?.data?.detail || t('pin.recoveryError'))
     },
   })
 
@@ -63,7 +46,7 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
     setError('')
 
     if (!currentPin.trim()) {
-      setError(t('pin.required'))
+      setError(t('pin.currentPinRequired'))
       return
     }
 
@@ -82,7 +65,7 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
       return
     }
 
-    changePinMutation.mutate({ currentPin, newPin })
+    recoverPinMutation.mutate({ currentPin, newPin })
   }
 
   const handleClose = () => {
@@ -93,38 +76,18 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
     onClose()
   }
 
-  if (!isOpen) return null
-
-  // Gracefully handle scenario where modal opens without a currentUser context
-  if (isOpen && !currentUser) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-          <h3 className="text-lg font-semibold mb-4">{t('pin.change')}</h3>
-          <p className="text-sm text-red-600 mb-4">{t('pin.noUserSelectedMessage', 'Select yourself first to change your PIN.')}</p>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-            >
-              {t('common.close', 'Close')}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (!isOpen || !user) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <h3 className="text-lg font-semibold mb-4">{t('pin.change')}</h3>
-        {success && (
-          <div className="mb-3 text-sm text-green-600" role="status">
-            {t('pin.changeSuccess')}
-          </div>
-        )}
+        <h3 className="text-lg font-semibold mb-4">
+          {t('pin.recoverPinTitle', { name: user.display_name })}
+        </h3>
+        
+        <p className="text-gray-600 text-sm mb-4">
+          {t('pin.recoverPinDescription')}
+        </p>
         
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -139,7 +102,7 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
                 onChange={(e) => setCurrentPin(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={t('pin.placeholder')}
-                disabled={changePinMutation.isPending}
+                disabled={recoverPinMutation.isPending}
                 autoFocus
               />
             </div>
@@ -155,7 +118,7 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
                 onChange={(e) => setNewPin(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={t('pin.newPinPlaceholder')}
-                disabled={changePinMutation.isPending}
+                disabled={recoverPinMutation.isPending}
               />
             </div>
             
@@ -170,7 +133,7 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
                 onChange={(e) => setConfirmPin(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={t('pin.confirmPinPlaceholder')}
-                disabled={changePinMutation.isPending}
+                disabled={recoverPinMutation.isPending}
               />
             </div>
             
@@ -183,17 +146,17 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              disabled={changePinMutation.isPending}
+              disabled={recoverPinMutation.isPending}
               className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              disabled={!!error || changePinMutation.isPending || !currentPin.trim() || !newPin.trim() || !confirmPin.trim()}
+              disabled={recoverPinMutation.isPending || !currentPin.trim() || !newPin.trim() || !confirmPin.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {changePinMutation.isPending ? t('common.loading') : t('pin.change')}
+              {recoverPinMutation.isPending ? t('common.loading') : t('pin.recoverPin')}
             </button>
           </div>
         </form>
@@ -202,4 +165,4 @@ const PinChangeModal: React.FC<PinChangeModalProps> = ({
   )
 }
 
-export default PinChangeModal
+export default PinRecoveryModal

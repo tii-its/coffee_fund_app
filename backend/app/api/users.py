@@ -15,6 +15,8 @@ from app.schemas import (
     UserPinVerificationRequest,
     UserPinChangeRequest,
     AdminUserCreateRequest,
+    PinResetRequest,
+    PinRecoveryRequest,
 )
 from app.services.audit import AuditService
 from app.services.balance import BalanceService
@@ -354,3 +356,72 @@ def get_users_above_threshold(
 ):
     """Get users with balance above or equal to threshold"""
     return BalanceService.get_users_above_threshold(db, threshold_cents)
+
+
+@router.put("/{user_id}/reset-pin")
+def reset_user_pin(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    admin=Depends(admin_actor)
+):
+    """Reset user PIN to default '1234' (admin only)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not PinService.reset_to_default_pin(user_id, db):
+        raise HTTPException(status_code=500, detail="Failed to reset PIN")
+
+    # Log the action
+    AuditService.log_action(
+        db=db,
+        actor_id=admin.id,
+        action="reset_pin",
+        entity="user",
+        entity_id=user_id,
+        meta_data={
+            "display_name": user.display_name,
+            "reset_to_default": True
+        }
+    )
+
+    return {"message": "PIN reset to default (1234) successfully"}
+
+
+@router.post("/{user_id}/recover-pin")
+def recover_user_pin(
+    user_id: UUID,
+    recovery_request: PinRecoveryRequest,
+    db: Session = Depends(get_db)
+):
+    """Recover user PIN with verification"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not PinService.recover_user_pin(
+        user_id, 
+        recovery_request.new_pin,
+        recovery_request.verification_method,
+        recovery_request.verification_data,
+        db
+    ):
+        if recovery_request.verification_method == 'current_pin':
+            raise HTTPException(status_code=403, detail="Invalid current PIN")
+        else:
+            raise HTTPException(status_code=400, detail="Invalid verification method or data")
+
+    # Log the action (self-recovery)
+    AuditService.log_action(
+        db=db,
+        actor_id=user_id,
+        action="recover_pin",
+        entity="user",
+        entity_id=user_id,
+        meta_data={
+            "display_name": user.display_name,
+            "verification_method": recovery_request.verification_method
+        }
+    )
+
+    return {"message": "PIN recovered successfully"}

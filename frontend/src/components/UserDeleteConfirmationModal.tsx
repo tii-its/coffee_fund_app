@@ -122,6 +122,7 @@ const UserDeleteConfirmationModal: React.FC<UserDeleteConfirmationModalProps> = 
           
           {hasRelatedRecords ? (
             <button
+              data-testid="force-deactivate-btn"
               onClick={onForceConfirm}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
             >
@@ -129,6 +130,7 @@ const UserDeleteConfirmationModal: React.FC<UserDeleteConfirmationModalProps> = 
             </button>
           ) : (
             <button
+              data-testid="confirm-delete-btn"
               onClick={onConfirm}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
             >
