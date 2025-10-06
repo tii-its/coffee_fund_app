@@ -222,6 +222,23 @@ Makefile
   make test-backend
   make test-frontend
   ```
+
+### Frontend Testing Conventions (Recent Additions)
+These conventions reflect the current test suite (27 passing) and should be followed for new tests:
+
+- **Global Test Setup**: `frontend/src/test-setup.ts` registers `@testing-library/jest-dom` matchers and stubs `window.alert` with a `vi.fn()` spy to suppress jsdom warnings. Always rely on that stub (do not re-mock per test unless necessary).
+- **User Factory**: Use `makeUser` from `frontend/src/tests/factories.ts` to generate user objects instead of hard‑coding inline literals. Keeps tests concise and consistent.
+- **Stable Selectors**: Destructive / multi-step confirmation buttons have data test ids:
+  - `confirm-delete-btn` (initial delete confirmation)
+  - `force-deactivate-btn` (second step after 409 related records response)
+  Prefer `getByTestId` (or `findAllByTestId` when duplicates are expected) over brittle text queries for these actions.
+- **Duplicate Elements**: Some components render buttons twice (e.g., once in list context, once in modal). Use plural queries like `findAllByText` / `findAllByTestId` and target the intended element explicitly if order matters.
+- **Delete API Signature**: When mocking, the users delete mutation is invoked as: `usersApi.delete(userId, { actorId, pin }, forceBoolean)` where `forceBoolean` defaults to `false`. Tests expecting forced deletion must assert the second call with `true` after a simulated 409.
+- **409 Two-Step Deletion Flow**: A new test (`user-deletion-related-records.test.tsx`) covers the scenario: first mutation returns 409 with a flag (backend shape), UI reveals related records + force button, second click calls API with `force=true` and succeeds. New tests for similar flows should emulate this pattern rather than inventing custom logic.
+- **Minimal Modal Copy (Intentional)**: User-specific names are NOT interpolated in the confirmation modal (design decision – Option A). Do not reintroduce name-personalized assertions; keep tests generic.
+- **BalanceCard Test Data**: Provide a nested `user` object if mocking balance responses (`balance.user.display_name`) to avoid undefined errors.
+- **i18n Keys**: If text assertions become flaky due to translation changes, prefer test ids. Keep translation fixtures minimal—avoid hard coupling tests to full phrase wording unless verifying i18n itself.
+- **PIN Gating Tests**: For dashboard PIN verification, ensure mocks align with the API contract and allow for multiple occurrences of PIN-related elements (use `findAllByTestId` or lenient assertions when components duplicate structure).
 ---
 
 ## Acceptance Criteria
