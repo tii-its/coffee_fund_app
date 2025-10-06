@@ -28,6 +28,22 @@ def treasurer_actor(
     return user
 
 
+def user_actor(
+    actor_id: UUID = Header(..., alias="x-actor-id"),
+    actor_pin: str = Header(..., alias="x-actor-pin"),
+    db: Session = Depends(get_db)
+):
+    """Dependency ensuring the supplied actor is a valid user with correct PIN."""
+    user = db.query(User).filter(User.id == actor_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Actor not found")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User is not active")
+    if not PinService.verify_user_pin(user.id, actor_pin, db):
+        raise HTTPException(status_code=403, detail="Invalid user PIN")
+    return user
+
+
 @router.post("/", response_model=MoneyMoveResponse, status_code=201)
 def create_money_move(
     money_move: MoneyMoveCreate,
@@ -179,3 +195,51 @@ def reject_money_move(
         status="rejected"
     )
     return money_move
+
+
+@router.post("/user-request", response_model=MoneyMoveResponse, status_code=201)
+def create_user_money_move_request(
+    money_move: MoneyMoveCreate,
+    db: Session = Depends(get_db),
+    user_requesting=Depends(user_actor)
+):
+    """Create a new money move request by a user for themselves"""
+    # Users can only create money moves for themselves
+    if money_move.user_id != user_requesting.id:
+        raise HTTPException(
+            status_code=403, 
+            detail="Users can only create money moves for themselves"
+        )
+
+    # Verify the user exists (redundant check, but good for safety)
+    user = db.query(User).filter(User.id == money_move.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db_money_move = MoneyMove(
+        type=money_move.type,
+        user_id=money_move.user_id,
+        amount_cents=money_move.amount_cents,
+        note=money_move.note,
+        created_by=user_requesting.id,
+        status=MoneyMoveStatus.PENDING
+    )
+
+    db.add(db_money_move)
+    db.commit()
+    # Refresh and eager-load related user for response schema expectations
+    db.refresh(db_money_move)
+    # Ensure user relationship is loaded to satisfy MoneyMoveResponse.user
+    _ = db_money_move.user  # access relationship to load
+
+    AuditService.log_money_move_created(
+        db=db,
+        actor_id=user_requesting.id,
+        money_move_id=db_money_move.id,
+        move_type=money_move.type.value,
+        user_id=money_move.user_id,
+        amount_cents=money_move.amount_cents,
+        note=money_move.note
+    )
+
+    return MoneyMoveResponse.model_validate(db_money_move)

@@ -405,3 +405,163 @@ def test_reject_money_move_not_pending(client, test_user, test_treasurer, test_t
     )
     assert response.status_code == 400
     assert "Money move is not pending" in response.json()["detail"]
+
+
+def test_create_user_money_move_request_deposit(client, test_user):
+    """Test user creating a money move request for themselves"""
+    money_move_data = {
+        "type": "deposit",
+        "user_id": test_user["id"],
+        "amount_cents": 1500,
+        "note": "User self-deposit request"
+    }
+    response = client.post(
+        "/money-moves/user-request",
+        json=money_move_data,
+        headers={"x-actor-id": test_user["id"], "x-actor-pin": "testpin123"},
+    )
+    assert response.status_code == 201
+    
+    data = response.json()
+    assert data["type"] == "deposit"
+    assert data["user_id"] == test_user["id"]
+    assert data["amount_cents"] == 1500
+    assert data["note"] == "User self-deposit request"
+    assert data["status"] == "pending"
+    assert data["created_by"] == test_user["id"]
+    assert data["confirmed_at"] is None
+    assert data["confirmed_by"] is None
+
+
+def test_create_user_money_move_request_payout(client, test_user):
+    """Test user creating a payout money move request for themselves"""
+    money_move_data = {
+        "type": "payout",
+        "user_id": test_user["id"],
+        "amount_cents": 500,
+        "note": "User self-payout request"
+    }
+    response = client.post(
+        "/money-moves/user-request",
+        json=money_move_data,
+        headers={"x-actor-id": test_user["id"], "x-actor-pin": "testpin123"},
+    )
+    assert response.status_code == 201
+    
+    data = response.json()
+    assert data["type"] == "payout"
+    assert data["user_id"] == test_user["id"]
+    assert data["amount_cents"] == 500
+    assert data["note"] == "User self-payout request"
+    assert data["status"] == "pending"
+    assert data["created_by"] == test_user["id"]
+
+
+def test_create_user_money_move_request_for_other_user_forbidden(client, test_user, admin_bootstrap):
+    """Test user cannot create money move request for another user"""
+    # Create another user
+    import time
+    user2_payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"Test User 2 {int(time.time()*1000)}",
+            "role": "user",
+            "is_active": True,
+            "pin": "testpin456"
+        }
+    }
+    user2 = client.post("/users/", json=user2_payload).json()
+    
+    money_move_data = {
+        "type": "deposit",
+        "user_id": user2["id"],  # Different user ID
+        "amount_cents": 1000,
+        "note": "Trying to create for another user"
+    }
+    response = client.post(
+        "/money-moves/user-request",
+        json=money_move_data,
+        headers={"x-actor-id": test_user["id"], "x-actor-pin": "testpin123"},
+    )
+    assert response.status_code == 403
+    assert "Users can only create money moves for themselves" in response.json()["detail"]
+
+
+def test_create_user_money_move_request_invalid_pin(client, test_user):
+    """Test user money move request with invalid PIN"""
+    money_move_data = {
+        "type": "deposit",
+        "user_id": test_user["id"],
+        "amount_cents": 1000,
+        "note": "Test with wrong PIN"
+    }
+    response = client.post(
+        "/money-moves/user-request",
+        json=money_move_data,
+        headers={"x-actor-id": test_user["id"], "x-actor-pin": "wrongpin"},
+    )
+    assert response.status_code == 403
+    assert "Invalid user PIN" in response.json()["detail"]
+
+
+def test_create_user_money_move_request_inactive_user(client, admin_bootstrap):
+    """Test inactive user cannot create money move request"""
+    # Create inactive user
+    import time
+    inactive_user_payload = {
+        "actor_id": admin_bootstrap["id"],
+        "actor_pin": admin_bootstrap["pin"],
+        "user": {
+            "display_name": f"Inactive User {int(time.time()*1000)}",
+            "role": "user",
+            "is_active": False,
+            "pin": "testpin789"
+        }
+    }
+    inactive_user = client.post("/users/", json=inactive_user_payload).json()
+    
+    money_move_data = {
+        "type": "deposit",
+        "user_id": inactive_user["id"],
+        "amount_cents": 1000,
+        "note": "Inactive user request"
+    }
+    response = client.post(
+        "/money-moves/user-request",
+        json=money_move_data,
+        headers={"x-actor-id": inactive_user["id"], "x-actor-pin": "testpin789"},
+    )
+    assert response.status_code == 403
+    assert "User is not active" in response.json()["detail"]
+
+
+def test_user_created_money_move_can_be_confirmed_by_treasurer(client, test_user, test_treasurer):
+    """Test that a user-created money move can be confirmed by a treasurer"""
+    # User creates a money move request
+    money_move_data = {
+        "type": "deposit",
+        "user_id": test_user["id"],
+        "amount_cents": 2000,
+        "note": "User request to be confirmed by treasurer"
+    }
+    create_response = client.post(
+        "/money-moves/user-request",
+        json=money_move_data,
+        headers={"x-actor-id": test_user["id"], "x-actor-pin": "testpin123"},
+    )
+    assert create_response.status_code == 201
+    money_move_id = create_response.json()["id"]
+    
+    # Treasurer confirms it
+    confirm_response = client.patch(
+        f"/money-moves/{money_move_id}/confirm",
+        headers=test_treasurer["_headers"],
+    )
+    assert confirm_response.status_code == 200
+    
+    data = confirm_response.json()
+    assert data["status"] == "confirmed"
+    assert data["confirmed_by"] == test_treasurer["id"]
+    assert data["created_by"] == test_user["id"]  # Created by user
+    assert data["confirmed_at"] is not None
