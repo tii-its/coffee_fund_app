@@ -42,6 +42,7 @@ vi.mock('react-i18next', () => ({
         'user.treasurerRole': 'Treasurer',
         'user.adminRole': 'Admin',
         'user.deleteUser': 'Delete User',
+        'user.deleteConfirmation.simpleMessage': (p: any) => `Are you sure you want to permanently delete the user "${p.userName}"? This action cannot be undone.`,
         'user.deleteConfirmation': (p: any) => `Are you sure you want to delete the user '${p.name}'?`,
         'common.cancel': 'Cancel',
       }
@@ -198,7 +199,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Test User 1')).toBeInTheDocument()
+      expect(screen.queryAllByText('Test User 1').length).toBeGreaterThan(0)
     })
 
     // Click delete button for first user
@@ -208,12 +209,14 @@ describe('Users Page - Deletion Functionality', () => {
     // Check that delete confirmation modal appears
     await waitFor(() => {
       expect(screen.getByText('Delete User')).toBeInTheDocument()
-      expect(screen.getByText("Are you sure you want to delete the user 'Test User 1'?")).toBeInTheDocument()
+        expect(
+          screen.getByText((txt) => txt.includes('Test User 1') && txt.toLowerCase().includes('permanently delete'))
+        ).toBeInTheDocument()
     })
 
     // Check modal buttons
     expect(screen.getByText('Cancel')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    expect(screen.getByTestId('confirm-delete-btn')).toBeInTheDocument()
   })
 
   it('closes delete confirmation modal when cancel is clicked', async () => {
@@ -224,7 +227,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Test User 1')).toBeInTheDocument()
+      expect(screen.queryAllByText('Test User 1').length).toBeGreaterThan(0)
     })
 
     // Open delete modal
@@ -258,7 +261,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Test User 1')).toBeInTheDocument()
+      expect(screen.queryAllByText('Test User 1').length).toBeGreaterThan(0)
     })
 
     // Open delete modal
@@ -270,7 +273,7 @@ describe('Users Page - Deletion Functionality', () => {
     })
 
     // Confirm delete
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  fireEvent.click(screen.getByTestId('confirm-delete-btn'))
 
     // Verify PIN was requested
     await waitFor(() => {
@@ -297,7 +300,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Test User 1')).toBeInTheDocument()
+      expect(screen.queryAllByText('Test User 1').length).toBeGreaterThan(0)
     })
 
     // Open delete modal and confirm
@@ -308,7 +311,7 @@ describe('Users Page - Deletion Functionality', () => {
       expect(screen.getByText('Delete User')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  fireEvent.click(screen.getByTestId('confirm-delete-btn'))
 
     // Verify PIN was requested
     await waitFor(() => {
@@ -335,7 +338,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Test User 1')).toBeInTheDocument()
+      expect(screen.queryAllByText('Test User 1').length).toBeGreaterThan(0)
     })
 
     // Open delete modal and confirm
@@ -346,7 +349,7 @@ describe('Users Page - Deletion Functionality', () => {
       expect(screen.getByText('Delete User')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  fireEvent.click(screen.getByTestId('confirm-delete-btn'))
 
     // Verify API was called
     await waitFor(() => {
@@ -373,7 +376,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Test User 1')).toBeInTheDocument()
+      expect(screen.queryAllByText('Test User 1').length).toBeGreaterThan(0)
     })
 
     // Open delete modal
@@ -385,7 +388,7 @@ describe('Users Page - Deletion Functionality', () => {
     })
 
     // Confirm delete
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  fireEvent.click(screen.getByTestId('confirm-delete-btn'))
 
     // Wait for deletion to complete
     await waitFor(() => {
@@ -406,7 +409,7 @@ describe('Users Page - Deletion Functionality', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Admin User')).toBeInTheDocument()
+      expect(screen.queryAllByText('Admin User').length).toBeGreaterThan(0)
     })
 
     // Click delete for admin user
@@ -414,7 +417,7 @@ describe('Users Page - Deletion Functionality', () => {
     fireEvent.click(deleteButtons[1]) // Admin is second in the list
 
     await waitFor(() => {
-      expect(screen.getByText("Are you sure you want to delete the user 'Admin User'?")).toBeInTheDocument()
+      expect(screen.getByText((txt: string) => txt.includes('Admin User') && txt.toLowerCase().includes('permanently delete'))).toBeInTheDocument()
     })
 
     // Close modal
@@ -428,7 +431,7 @@ describe('Users Page - Deletion Functionality', () => {
     fireEvent.click(deleteButtons[2]) // Treasurer is third in the list
 
     await waitFor(() => {
-      expect(screen.getByText("Are you sure you want to delete the user 'Treasurer User'?")).toBeInTheDocument()
+      expect(screen.getByText((txt: string) => txt.includes('Treasurer User') && txt.toLowerCase().includes('permanently delete'))).toBeInTheDocument()
     })
   })
 })

@@ -113,3 +113,73 @@ def test_delete_last_admin_forbidden(client, admin_bootstrap):
     resp = client.delete(f"/users/{admin_id}", headers={"x-actor-id": admin_id, "x-actor-pin": admin_bootstrap["pin"]})
     assert resp.status_code == 400, resp.text
     assert resp.json()["detail"] == "Cannot delete the last remaining admin user"
+
+
+def test_verify_user_pin_success(client, admin_bootstrap):
+    """Verify endpoint returns 200 for correct PIN of existing user."""
+    payload = {
+        "user_id": admin_bootstrap["id"],
+        "pin": admin_bootstrap["pin"],
+    }
+    resp = client.post("/users/verify-user-pin", json=payload)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["message"].lower().startswith("user pin verified")
+
+
+def test_verify_user_pin_invalid_pin(client, admin_bootstrap):
+    """Verify endpoint returns 403 for wrong PIN."""
+    payload = {
+        "user_id": admin_bootstrap["id"],
+        "pin": "wrongpin",
+    }
+    resp = client.post("/users/verify-user-pin", json=payload)
+    assert resp.status_code == 403, resp.text
+    detail = resp.json().get("detail")
+    assert detail == "Invalid user PIN"
+
+
+def test_verify_user_pin_unknown_user(client):
+    """Verify endpoint returns 403 for unknown user id (treated as invalid)."""
+    import uuid
+    payload = {
+        "user_id": str(uuid.uuid4()),
+        "pin": "doesntmatter",
+    }
+    resp = client.post("/users/verify-user-pin", json=payload)
+    # Service returns False leading to 403 Invalid user PIN
+    assert resp.status_code == 403, resp.text
+    assert resp.json().get("detail") == "Invalid user PIN"
+
+
+def test_change_user_pin_success(client, admin_bootstrap):
+    """End-to-end: verify old PIN works, change PIN, old fails, new works."""
+    user_id = admin_bootstrap["id"]
+    old_pin = admin_bootstrap["pin"]
+    new_pin = "NewSecretPin456"
+
+    # Sanity: old pin verifies
+    resp_old = client.post("/users/verify-user-pin", json={"user_id": user_id, "pin": old_pin})
+    assert resp_old.status_code == 200, resp_old.text
+
+    # Change pin
+    change_payload = {"user_id": user_id, "current_pin": old_pin, "new_pin": new_pin}
+    change_resp = client.post("/users/change-user-pin", json=change_payload)
+    assert change_resp.status_code == 200, change_resp.text
+    assert "changed" in change_resp.json()["message"].lower()
+
+    # Old pin now fails
+    resp_old_fail = client.post("/users/verify-user-pin", json={"user_id": user_id, "pin": old_pin})
+    assert resp_old_fail.status_code == 403
+
+    # New pin succeeds
+    resp_new = client.post("/users/verify-user-pin", json={"user_id": user_id, "pin": new_pin})
+    assert resp_new.status_code == 200
+
+    # Revert for idempotency (change back) to not affect potential later tests expecting original admin pin
+    revert_payload = {"user_id": user_id, "current_pin": new_pin, "new_pin": old_pin}
+    revert_resp = client.post("/users/change-user-pin", json=revert_payload)
+    assert revert_resp.status_code == 200, revert_resp.text
+
+    # Confirm revert
+    resp_revert = client.post("/users/verify-user-pin", json={"user_id": user_id, "pin": old_pin})
+    assert resp_revert.status_code == 200
