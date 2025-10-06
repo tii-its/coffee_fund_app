@@ -51,6 +51,7 @@ This file gives **targeted, actionable guidance** to a GitHub Copilot agent work
 - **UUID Primary Keys**: All entities use UUID for distributed-friendly IDs
 - **Creator/Actor Tracking**: All mutations track who performed the action
 - **Two-Person Confirmation**: Money moves require separate creator and confirmer
+- **User-Initiated Money Moves**: `POST /money-moves/user-request` allows users to create money moves for themselves only (requires user PIN, still needs treasurer confirmation)
 - **Pydantic v2**: Use `.model_dump()` instead of deprecated `.dict()`
 
 ### Testing Infrastructure
@@ -168,7 +169,7 @@ Makefile
 ---
 
 ## Roles
-- **User**: Can access dashboard, kiosk
+- **User**: Can access dashboard, kiosk; can initiate money moves for their own account (requires treasurer confirmation)
 - **Treasurer**: All User rights + access products and treasurer page; initiates & confirms money moves (with two-person rule)
 - **Admin**: A special, unique and preconfigured user required for user CRUD, rotating the Admin PIN itself. Cannot be removed.
 
@@ -179,7 +180,7 @@ Makefile
 - **Treasurer dashboard**: Requires Treasurer role. List of all balances, pending confirmations, product mgmt, CSV export, money movement approvals
 - **Dashboard**: Overview of coffee fund balance, Allows selection of user which leads to user dashboard; top 3 coffee consumers, List of users below threshold, 
 - **User dashboard**: Part of dashboard, Current balance, consumption history, topping up deposits/payouts, change user PIN, recover user PIN (self-service)
-**Users page**: Accessible to Treasurers (future: may require re-auth with treasurer's own PIN). List all users, create new users (must supply a PIN), edit existing users (can rotate their PIN or reset to default), deactivate users.
+**Users page**: Accessible to Treasurers (future: may require re-auth with treasurer's own PIN). List all users, create new users (must supply a PIN), edit existing users (can rotate their PIN or reset to default), deactivate users. Users can initiate money moves for themselves via "Top Up Balance" button (visible only on their own user row).
 - **Products**: Requrires Treasurer role. List, create, edit, deactivate products.
 
 ---

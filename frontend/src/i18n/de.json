@@ -117,7 +117,10 @@
     "moveCreated": "Geldtransfer erfolgreich erstellt",
     "moveConfirmed": "Geldtransfer erfolgreich bestätigt",
     "moveRejected": "Geldtransfer erfolgreich abgelehnt",
-    "twoPersonConfirmation": "Geldtransfers erfordern eine Zwei-Personen-Bestätigung"
+    "twoPersonConfirmation": "Geldtransfers erfordern eine Zwei-Personen-Bestätigung",
+    "topUpBalance": "Guthaben aufladen",
+    "requestCreated": "Geldtransfer-Anfrage erfolgreich erstellt",
+    "creationFailed": "Fehler beim Erstellen der Geldtransfer-Anfrage"
   },
   "kiosk": {
     "selectUser": "Benutzer auswählen",

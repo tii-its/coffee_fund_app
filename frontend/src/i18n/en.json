@@ -117,7 +117,10 @@
     "moveCreated": "Money move created successfully",
     "moveConfirmed": "Money move confirmed successfully",
     "moveRejected": "Money move rejected successfully",
-    "twoPersonConfirmation": "Money moves require two-person confirmation"
+    "twoPersonConfirmation": "Money moves require two-person confirmation",
+    "topUpBalance": "Top Up Balance",
+    "requestCreated": "Money move request created successfully",
+    "creationFailed": "Failed to create money move request"
   },
   "kiosk": {
     "selectUser": "Select User",
