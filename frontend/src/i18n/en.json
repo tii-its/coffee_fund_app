@@ -152,7 +152,7 @@
     "required": "PIN is required",
     "invalid": "Invalid PIN",
     "verification": "PIN Verification Required",
-  "description": "Please enter the Admin PIN to continue.",
+  "description": "Please enter the required PIN to continue.",
     "change": "Change PIN",
     "currentPin": "Current PIN",
     "newPin": "New PIN",
@@ -164,9 +164,6 @@
     "tooShort": "PIN must be at least 4 characters",
     "changeSuccess": "PIN changed successfully",
     "changeError": "Failed to change PIN",
-    "recoverPin": "Recover PIN",
-    "recoverPinTitle": "Recover PIN for {{name}}",
-    "recoverPinDescription": "Enter your current PIN to set a new PIN.",
     "recoveryError": "Failed to recover PIN",
     "currentPinRequired": "Current PIN is required",
     "pinManagement": "PIN Management",
@@ -184,7 +181,13 @@
     "selectActor": "Select Actor",
     "actorRequired": "Actor selection is required",
     "timeoutInfo": "PIN is not stored. Required every action.",
-    "modalTitle": "Authorization Required"
+    "modalTitle": "Authorization Required",
+      "confirmAccessTitle": "Confirm access for {{name}}",
+      "confirmAccessMessage": "Enter this user's PIN to view their dashboard.",
+      "confirmAccess": "Confirm Access",
+      "noUserSelectedMessage": "Select a user to view dashboard details",
+      "accessGranted": "Access granted",
+      "accessDenied": "Access denied"
   },
   "auth": {
     "restricted": "Restricted Area",

@@ -7,29 +7,34 @@ import { useAppStore } from '@/store'
 import BalanceCard from '@/components/BalanceCard'
 import UserPicker from '@/components/UserPicker'
 import TopUpBalanceModal from '@/components/TopUpBalanceModal'
-import PinRecoveryModal from '@/components/PinRecoveryModal'
 import PinChangeModal from '@/components/PinChangeModal'
+import { useToast } from '@/components/Toast'
 import type { User, MoneyMoveCreate } from '@/api/types'
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentUser } = useAppStore()
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const setCurrentUser = useAppStore((s: any) => s.setCurrentUser)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null) // confirmed user
+  const [pendingUser, setPendingUser] = useState<User | null>(null) // awaiting PIN
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [isVerifying, setIsVerifying] = useState(false)
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false)
-  const [isPinRecoveryModalOpen, setIsPinRecoveryModalOpen] = useState(false)
   const [isPinChangeModalOpen, setIsPinChangeModalOpen] = useState(false)
+  const { notify } = useToast()
 
   // Fetch all users for selection
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => usersApi.getAll({ active_only: true }).then((res) => res.data),
+    queryFn: () => usersApi.getAll({ active_only: true }).then((res: { data: User[] }) => res.data),
   })
 
   // Fetch user balance when selected
   const { data: userBalance } = useQuery({
     queryKey: ['userBalance', selectedUser?.id],
-    queryFn: () => selectedUser ? usersApi.getBalance(selectedUser.id).then((res) => res.data) : null,
+    queryFn: () => selectedUser ? usersApi.getBalance(selectedUser.id).then((res: { data: any }) => res.data) : null,
     enabled: !!selectedUser,
   })
 
@@ -38,7 +43,7 @@ const Dashboard: React.FC = () => {
     queryKey: ['recentConsumptions', selectedUser?.id],
     queryFn: () =>
       selectedUser
-        ? consumptionsApi.getUserRecent(selectedUser.id, 5).then((res) => res.data)
+        ? consumptionsApi.getUserRecent(selectedUser.id, 5).then((res: { data: any[] }) => res.data)
         : [],
     enabled: !!selectedUser,
   })
@@ -48,7 +53,7 @@ const Dashboard: React.FC = () => {
     queryKey: ['pendingMoves', selectedUser?.id],
     queryFn: () =>
       selectedUser
-        ? moneyMovesApi.getAll({ user_id: selectedUser.id, status: 'pending' }).then((res) => res.data)
+        ? moneyMovesApi.getAll({ user_id: selectedUser.id, status: 'pending' }).then((res: { data: any[] }) => res.data)
         : [],
     enabled: !!selectedUser,
   })
@@ -56,7 +61,7 @@ const Dashboard: React.FC = () => {
   // Fetch users above threshold (>=€10.00) 
   const { data: usersAboveThreshold = [] } = useQuery({
     queryKey: ['usersAboveThreshold'],
-    queryFn: () => usersApi.getAboveThreshold(1000).then((res) => res.data),
+    queryFn: () => usersApi.getAboveThreshold(1000).then((res: { data: any[] }) => res.data),
   })
 
   // Create money move mutation
@@ -80,25 +85,25 @@ const Dashboard: React.FC = () => {
   }
   const { data: allBalances = [] } = useQuery({
     queryKey: ['allBalances'],
-    queryFn: () => usersApi.getAllBalances().then((res) => res.data),
+    queryFn: () => usersApi.getAllBalances().then((res: { data: any[] }) => res.data),
   })
 
   // Fetch users below €5 threshold
   const { data: usersBelowThreshold = [] } = useQuery({
     queryKey: ['usersBelowThreshold'],
-    queryFn: () => usersApi.getBelowThreshold(500).then((res) => res.data), // 500 cents = €5
+    queryFn: () => usersApi.getBelowThreshold(500).then((res: { data: any[] }) => res.data), // 500 cents = €5
   })
 
   // Fetch latest added product
   const { data: latestProduct } = useQuery({
     queryKey: ['latestProduct'],
-    queryFn: () => productsApi.getLatest().then((res) => res.data),
+    queryFn: () => productsApi.getLatest().then((res: { data: any }) => res.data),
   })
 
   // Fetch product consumption statistics
   const { data: productConsumptionStats = [] } = useQuery({
     queryKey: ['productConsumptionStats'],
-    queryFn: () => productsApi.getTopConsumers(3).then((res) => res.data), // Top 3 consumers per product
+    queryFn: () => productsApi.getTopConsumers(3).then((res: { data: any[] }) => res.data), // Top 3 consumers per product
   })
 
   if (!selectedUser) {
@@ -106,12 +111,79 @@ const Dashboard: React.FC = () => {
       <div>
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2">{t('kiosk.selectUser')}</h2>
-          <p className="text-gray-600">{t('dashboard.currentBalance')}</p>
+          <p className="text-gray-600">{t('pin.noUserSelectedMessage')}</p>
         </div>
         
-        <UserPicker users={users} onSelect={setSelectedUser} />
-        
-        {/* Overview Cards */}
+        <UserPicker
+          users={users}
+          onSelect={(user: User) => {
+            setPendingUser(user)
+            setPinInput('')
+            setPinError('')
+          }}
+        />
+        {pendingUser && (
+          <div className="mt-6 max-w-md p-6 bg-white border border-blue-200 rounded shadow-sm">
+            <h3 className="text-lg font-semibold mb-2 text-blue-700">{t('pin.confirmAccessTitle', { name: pendingUser.display_name })}</h3>
+            <p className="text-sm text-gray-600 mb-4">{t('pin.confirmAccessMessage')}</p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault()
+                if (!pinInput.trim()) {
+                  setPinError(t('pin.required'))
+                  return
+                }
+                setIsVerifying(true)
+                setPinError('')
+                try {
+                  await usersApi.verifyPin(pendingUser.id, pinInput)
+                  setSelectedUser(pendingUser)
+                  setCurrentUser(pendingUser)
+                  setPendingUser(null)
+                  setPinInput('')
+                  notify({ type: 'success', text: t('pin.accessGranted') })
+                } catch (err: any) {
+                  const detail = err?.response?.data?.detail
+                  setPinError(typeof detail === 'string' ? detail : t('pin.invalid'))
+                  notify({ type: 'error', text: t('pin.accessDenied') })
+                } finally {
+                  setIsVerifying(false)
+                }
+              }}
+            >
+              <input
+                type="password"
+                className="w-full border border-gray-300 rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t('pin.placeholder')}
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                disabled={isVerifying}
+                autoFocus
+              />
+              {pinError && <div className="text-xs text-red-600 mb-2">{pinError}</div>}
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setPendingUser(null); setPinInput(''); setPinError('') }}
+                  className="px-3 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  disabled={isVerifying}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!pinInput.trim() || isVerifying}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isVerifying ? t('common.loading') : t('pin.confirmAccess')}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Overview Cards (hidden while waiting for PIN) */}
+        {!pendingUser && (
         <div className="mt-8 space-y-6">
           {/* First Row - Main Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -231,6 +303,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
       </div>
     )
   }
@@ -243,12 +316,14 @@ const Dashboard: React.FC = () => {
           <h2 className="text-2xl font-bold">{selectedUser.display_name}</h2>
           <p className="text-gray-600 capitalize">{selectedUser.role}</p>
         </div>
-        <button
-          onClick={() => setSelectedUser(null)}
-          className="btn btn-outline"
-        >
-          {t('kiosk.selectUser')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSelectedUser(null)}
+            className="btn btn-outline"
+          >
+            {t('kiosk.selectUser')}
+          </button>
+        </div>
       </div>
 
       {/* Balance Card */}
@@ -267,7 +342,7 @@ const Dashboard: React.FC = () => {
               </button>
             )}
             {/* PIN Management - show if user is viewing their own profile */}
-            {currentUser && selectedUser && currentUser.id === selectedUser.id && (
+            {selectedUser && currentUser && currentUser.id === selectedUser.id ? (
               <>
                 <button
                   onClick={() => setIsPinChangeModalOpen(true)}
@@ -275,14 +350,9 @@ const Dashboard: React.FC = () => {
                 >
                   {t('pin.change')}
                 </button>
-                <button
-                  onClick={() => setIsPinRecoveryModalOpen(true)}
-                  className="btn btn-outline btn-warning px-4 py-2"
-                >
-                  {t('pin.recoverPin')}
-                </button>
+                {/* PIN recovery removed (redundant with admin reset) */}
               </>
-            )}
+            ) : null}
           </div>
         </div>
       )}
@@ -370,15 +440,8 @@ const Dashboard: React.FC = () => {
         }}
       />
 
-      {/* PIN Recovery Modal */}
-      <PinRecoveryModal
-        isOpen={isPinRecoveryModalOpen}
-        onClose={() => setIsPinRecoveryModalOpen(false)}
-        onSuccess={() => {
-          // Optionally show success message
-        }}
-        user={selectedUser}
-      />
+      {/* Inline PIN verification replaces modal */}
+
     </div>
   )
 }

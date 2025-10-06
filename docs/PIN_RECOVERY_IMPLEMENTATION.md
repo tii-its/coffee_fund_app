@@ -1,20 +1,27 @@
-# PIN Recovery Implementation
+# PIN PIN Management / Reset (Revised)
 
 ## Overview
 
-This document describes the implementation of PIN recovery functionality for the Coffee Fund Web App, allowing both user-initiated PIN recovery and admin PIN reset capabilities.
+This document (revised) describes the current PIN management capabilities of the Coffee Fund Web App.
+
+NOTE (2025-10-06): The previously implemented end‑user self "PIN Recovery" flow (separate from normal Change PIN) has been removed to reduce UX redundancy. Users can still:
+
+1. Change their own PIN (requires current PIN) via the Change PIN modal.
+2. Ask an admin to reset their PIN to the default (1234) if they have forgotten it.
+
+The former Recover PIN modal (which duplicated Change PIN semantics) and its translations were removed. Backend endpoint `/users/{id}/recover-pin` is currently retained for possible future re‑activation (e.g. adding email-based verification) but is no longer surfaced in the UI.
 
 ## Requirements
 
-Based on the problem statement:
-1. **User PIN Recovery**: Users shall be able to define a new PIN in dashboard when selecting themselves, with user confirmation required
-2. **Admin PIN Reset**: Admin shall be able to reset any user's PIN to default (1234) in the Users page via edit button, with admin confirmation required
+Scope after simplification:
+1. **User PIN Change** (self-service, requires current PIN)
+2. **Admin PIN Reset** (forces default 1234, requires admin PIN)
 
 ## Implementation Architecture
 
 ### Backend Changes
 
-#### 1. Enhanced PIN Service (`backend/app/services/pin.py`)
+#### 1. PIN Service (`backend/app/services/pin.py`)
 
 Added new methods to the existing `PinService` class:
 
@@ -25,24 +32,21 @@ def reset_to_default_pin(user_id: UUID, db: Session) -> bool:
     return PinService.set_user_pin(user_id, "1234", db)
 
 @staticmethod
-def recover_user_pin(user_id: UUID, new_pin: str, verification_method: str, verification_data: str, db: Session) -> bool:
-    """Recover user PIN with verification"""
-    # Supports 'current_pin' verification method
-    # Future: could add email verification
+def recover_user_pin(...):
+  """(Legacy endpoint) Retained for potential future email-based recovery; not used by frontend."""
 ```
 
-#### 2. New API Schemas (`backend/app/schemas/users.py`)
+#### 2. API Schemas (`backend/app/schemas/users.py`)
 
 ```python
 class PinResetRequest(BaseModel):
     """Admin request to reset user PIN to default"""
     pass  # Actor info comes from headers
 
-class PinRecoveryRequest(BaseModel):
-    """User request to recover their PIN"""
-    new_pin: str
-    verification_method: str  # 'current_pin' or future: 'email' 
-    verification_data: str   # the current PIN or email token
+class PinRecoveryRequest(BaseModel):  # Legacy / currently unused by UI
+  new_pin: str
+  verification_method: str
+  verification_data: str
 ```
 
 #### 3. New API Endpoints (`backend/app/api/users.py`)
@@ -53,11 +57,9 @@ class PinRecoveryRequest(BaseModel):
 - Resets target user PIN to "1234"
 - Full audit logging
 
-**User PIN Recovery:**
-- `POST /users/{user_id}/recover-pin`
-- Accepts current PIN verification
-- Sets new PIN after verification
-- Self-service audit logging
+**(Legacy) User PIN Recovery:**
+- Endpoint retained (`POST /users/{user_id}/recover-pin`) but not exposed in UI.
+- May be repurposed for future email-based reset flows.
 
 #### 4. Enhanced API Client (`frontend/src/api/client.ts`)
 
@@ -72,15 +74,9 @@ resetPin: (user_id: string, actor: ActorHeaders) => Promise<{message: string}>
 recoverPin: (user_id: string, new_pin: string, verification_method: string, verification_data: string) => Promise<{message: string}>
 ```
 
-### Frontend Changes
+### Frontend
 
-#### 1. PIN Recovery Modal (`frontend/src/components/PinRecoveryModal.tsx`)
-
-New component for user-initiated PIN recovery:
-- Requires current PIN verification
-- PIN confirmation with validation
-- Integration with existing API patterns
-- Comprehensive error handling
+Removed: `PinRecoveryModal.tsx` and associated dashboard button. Only `PinChangeModal` (self change) and admin reset button in `UserEditModal` remain.
 
 #### 2. Enhanced User Edit Modal (`frontend/src/components/UserEditModal.tsx`)
 
@@ -90,12 +86,11 @@ Added PIN management section for admins:
 - Admin PIN confirmation via `usePerActionPin` hook
 - Success/error feedback
 
-#### 3. Enhanced Dashboard (`frontend/src/pages/Dashboard.tsx`)
+#### Dashboard (`frontend/src/pages/Dashboard.tsx`)
 
 When user views their own profile:
-- "Change PIN" button (existing `PinChangeModal`)
-- "Recover PIN" button (new `PinRecoveryModal`)
-- Only shown when `currentUser.id === selectedUser.id`
+- "Change PIN" button (opens `PinChangeModal`).
+- No separate recovery button (removed as redundant).
 
 #### 4. Internationalization
 
@@ -116,23 +111,14 @@ Added translations for German and English:
 
 ## User Flows
 
-### 1. User PIN Recovery Flow
+### 1. User PIN Change Flow
 
-**Trigger:** User selects themselves in Dashboard and clicks "Recover PIN"
-
-1. Dashboard → User selects self → Shows PIN management buttons
-2. User clicks "Recover PIN" → `PinRecoveryModal` opens
-3. User enters:
-   - Current PIN (verification)
-   - New PIN 
-   - Confirm new PIN
-4. Frontend validates PIN format and matching
-5. API call to `/users/{user_id}/recover-pin` with current PIN verification
-6. Backend verifies current PIN and sets new PIN
-7. Success feedback and audit log entry
-8. Modal closes
-
-**Security:** Requires current PIN, self-service only, full audit trail
+1. User selects themselves on Dashboard
+2. Clicks "Change PIN"
+3. Enters current PIN, new PIN, confirm new PIN
+4. Validation (match, length >=4)
+5. Backend `/users/change-user-pin` (current implementation) updates stored hash
+6. Success feedback & audit log
 
 ### 2. Admin PIN Reset Flow  
 
@@ -212,10 +198,8 @@ All PIN operations logged with:
 
 ## Future Enhancements
 
-### Email Verification
-- Add email-based PIN recovery option
-- Email token generation and verification
-- Fallback when current PIN is forgotten
+### Email Verification (Future)
+- Could re‑enable `/users/{id}/recover-pin` with email token
 
 ### Additional Security
 - Rate limiting for PIN attempts
@@ -242,4 +226,4 @@ No new dependencies added. Uses existing React Query, i18next, and FastAPI patte
 
 ## Conclusion
 
-This implementation provides comprehensive PIN recovery functionality while maintaining security best practices and following existing codebase patterns. The solution addresses both user self-service and admin management scenarios with proper verification and audit trails.
+Current streamlined approach removes redundant user recovery path, simplifying UX while retaining secure self change + admin reset flows. Future enhancements (email / MFA) can reuse the dormant recovery endpoint.
