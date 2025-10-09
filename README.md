@@ -4,14 +4,16 @@ A team coffee fund management application with consumption tracking and cash mov
 
 ## Features
 
- Track product consumption for team members
- Manage cash deposits and payouts with two-person confirmation
- Multi-user concurrent support (kiosk, desktop, mobile)
- Internationalization support (German/English)
- Role-based access (User/Treasurer) — every user (including treasurers) has their own mandatory PIN (no global/shared PIN)
-- PIN recovery: users can recover their own PIN, admins can reset any PIN to default (1234)
- Audit logging for all actions
-- User hard deletion (admin-only, permanently removes user if no related records; last remaining admin cannot be deleted)
+* Product consumption tracking
+* Cash deposits & payouts with enforced two-person confirmation (creator ≠ confirmer)
+* Self-service top-up (user-initiated deposit request) via per‑user PIN (no traditional login session)
+* Multi-user concurrent usage (kiosk, desktop, mobile)
+* Internationalization (German/English) with runtime toggle
+* Role-based access (User / Treasurer) — every user has a mandatory individual PIN (no global/shared PIN)
+* Per-action PIN re-entry for sensitive flows (e.g. top-up modal)
+* PIN management: user can change own PIN; admin can reset a user PIN to default (1234)
+* Comprehensive audit logging
+* Safe user deactivation / deletion rules (last remaining admin protected)
 
 ## Quick Start
 
@@ -42,7 +44,86 @@ A team coffee fund management application with consumption tracking and cash mov
 - `make lint` - Run linting
 - `make migrate` - Run database migrations
 - `make clean` - Clean up containers and volumes
-   (All sensitive actions rely on per-user PINs; no global/shared admin or treasurer PIN remains. Each privileged action asks for actor PIN again — no client-side PIN storage.)
+   (All sensitive actions rely on per-user PINs; no global/shared admin or treasurer PIN remains. Each privileged action can ask for the actor PIN again — no client-side PIN storage.)
+
+## Per-User PIN Model
+
+The application is intentionally stateless regarding authentication. Instead of persistent sessions:
+
+1. A user is selected (e.g. on the Dashboard or Kiosk).
+2. The user enters their personal PIN to gain temporary view access.
+3. Additional sensitive actions (e.g. requesting a top-up) require re-entering the PIN inside the action modal.
+4. Treasurer confirmations require a different treasurer’s PIN (two-person rule).
+
+Implications:
+* No browser session cookies for auth; each action validates intent explicitly.
+* PINs are hashed (SHA-256) server-side; never logged or stored in plaintext.
+* UI must not cache the PIN; components treat PIN input as ephemeral.
+
+## Self-Service Top-Up Flow
+
+Users can request a deposit for their own account without a treasurer initiating it:
+
+1. Select user on Dashboard → enter PIN (grants access to that user context)
+2. Click "Top Up Balance"
+3. In the Top-Up modal enter amount, optional note, and re-enter PIN (second factor of intent)
+4. A pending money move of type `deposit` is created (status = `pending`)
+5. A different treasurer later confirms the pending move; only then balance updates
+
+Validation Rules:
+* Amount must be > 0; decimals accepted, converted to cents server-side
+* PIN required if `requirePin=true` on the modal
+* Note optional (500 chars max)
+
+## Manual Testing Guide (Quick)
+
+Below are condensed steps; see `docs/manual-testing.md` for comprehensive scenarios.
+
+### User PIN Access + Top-Up Request
+1. Start stack: `make dev` → open http://localhost:3000
+2. Create a user (if none exist) with a PIN via Users page (as an existing admin/treasurer)
+3. Go to Dashboard → select the user → enter their PIN
+4. Press "Top Up Balance" → enter amount (e.g. 12.50), note, re-enter PIN → submit
+5. Verify success toast & pending entry (Pending Confirmations section)
+
+### Treasurer Confirmation
+1. Log (select) a treasurer user with their PIN
+2. Navigate to Treasurer page (or Dashboard pending list) to view pending money moves
+3. Confirm the deposit with a different treasurer’s PIN (enforces two-person rule)
+4. Balance should update after confirmation (backend invalidates queries; refresh if needed)
+
+### Error Checks
+* Wrong PIN → error toast + inline validation message
+* Zero / negative amount → validation error prevents submit
+* Reusing same treasurer as creator for confirmation → backend should reject
+
+### Internationalization Toggle
+1. Switch language (e.g. from DE to EN) using UI control (if present)
+2. Ensure newly added keys (top-up modal labels, confirmation notice) are translated
+
+## Added i18n Keys (Recent)
+
+The following keys were recently added to support the self-service top-up integration test and improved UX:
+```
+common.optional
+common.characters
+common.equivalent
+common.creating
+moneyMove.amount
+moneyMove.note
+moneyMove.noteExample
+moneyMove.confirmationRequired
+moneyMove.invalidAmount
+```
+German equivalents reside in `frontend/src/i18n/de.json`.
+
+## Testing Notes (Frontend)
+
+* Use data-testid attributes for stable selectors in `TopUpBalanceModal`:
+  - `topup-amount`, `topup-pin`, `topup-note`, `topup-submit`
+* Integration test: `dashboard-topup.test.tsx` performs full flow (PIN verification + modal submit) without component mocking
+* Prefer factories (`makeUser`) rather than inline object literals
+* If translation text becomes brittle, fall back to test ids
 
 ## Tech Stack
 

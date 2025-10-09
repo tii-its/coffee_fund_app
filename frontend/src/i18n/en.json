@@ -42,7 +42,11 @@
     "inactive": "Inactive",
     "submit": "Submit",
     "actions": "Actions",
-    "restore": "Restore"
+    "restore": "Restore",
+    "optional": "Optional",
+    "characters": "characters",
+    "equivalent": "Equivalent",
+    "creating": "Creating..."
   },
   "user": {
     "displayName": "Display Name",
@@ -117,7 +121,17 @@
     "moveCreated": "Money move created successfully",
     "moveConfirmed": "Money move confirmed successfully",
     "moveRejected": "Money move rejected successfully",
-    "twoPersonConfirmation": "Money moves require two-person confirmation"
+    "twoPersonConfirmation": "Money moves require two-person confirmation",
+    "topUpBalance": "Top Up Balance",
+    "requestTopUp": "Submit Top-Up Request",
+    "requestCreated": "Money move request created successfully",
+    "creationFailed": "Failed to create money move request",
+    "notAllowed": "You are not allowed to perform this action",
+    "amount": "Amount",
+    "note": "Note",
+    "noteExample": "e.g. Lunch top-up",
+    "confirmationRequired": "Will require treasurer confirmation",
+    "invalidAmount": "Invalid amount"
   },
   "kiosk": {
     "selectUser": "Select User",
@@ -187,7 +201,8 @@
       "confirmAccess": "Confirm Access",
       "noUserSelectedMessage": "Select a user to view dashboard details",
       "accessGranted": "Access granted",
-      "accessDenied": "Access denied"
+    "accessDenied": "Access denied",
+    "enterPin": "Enter PIN"
   },
   "auth": {
     "restricted": "Restricted Area",

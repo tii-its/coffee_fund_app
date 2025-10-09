@@ -31,6 +31,7 @@
     "total": "Gesamt",
     "date": "Datum",
     "user": "Benutzer",
+    "requestTopUp": "Aufladeanfrage senden",
     "product": "Produkt",
     "amount": "Betrag",
     "balance": "Saldo",
@@ -42,7 +43,11 @@
     "inactive": "Inaktiv",
     "submit": "Senden",
     "actions": "Aktionen",
-    "restore": "Wiederherstellen"
+    "restore": "Wiederherstellen",
+    "optional": "Optional",
+    "characters": "Zeichen",
+    "equivalent": "Entspricht",
+    "creating": "Erstelle..."
   },
   "user": {
     "displayName": "Anzeigename",
@@ -117,7 +122,16 @@
     "moveCreated": "Geldtransfer erfolgreich erstellt",
     "moveConfirmed": "Geldtransfer erfolgreich bestätigt",
     "moveRejected": "Geldtransfer erfolgreich abgelehnt",
-    "twoPersonConfirmation": "Geldtransfers erfordern eine Zwei-Personen-Bestätigung"
+    "twoPersonConfirmation": "Geldtransfers erfordern eine Zwei-Personen-Bestätigung",
+    "topUpBalance": "Guthaben aufladen",
+    "requestCreated": "Geldtransfer-Anfrage erfolgreich erstellt",
+    "creationFailed": "Fehler beim Erstellen der Geldtransfer-Anfrage",
+    "notAllowed": "Diese Aktion ist nicht erlaubt",
+    "amount": "Betrag",
+    "note": "Notiz",
+    "noteExample": "z.B. Mittagessen-Aufladung",
+    "confirmationRequired": "Erfordert Bestätigung durch Verwalter",
+    "invalidAmount": "Ungültiger Betrag"
   },
   "kiosk": {
     "selectUser": "Benutzer auswählen",
@@ -187,7 +201,8 @@
       "confirmAccess": "Zugriff bestätigen",
       "noUserSelectedMessage": "Wählen Sie einen Benutzer, um Dashboard-Details anzuzeigen",
       "accessGranted": "Zugriff gewährt",
-      "accessDenied": "Zugriff verweigert"
+    "accessDenied": "Zugriff verweigert",
+    "enterPin": "PIN eingeben"
   },
   "auth": {
     "restricted": "Eingeschränkter Bereich",

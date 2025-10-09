@@ -6,7 +6,6 @@ import { usePerActionPin } from '@/hooks/usePerActionPin'
 import { useAppStore } from '@/store'
 import { formatCurrency, formatDate, downloadBlob } from '@/lib/utils'
 import StockPurchaseForm from '@/components/StockPurchaseForm'
-import PinChangeModal from '@/components/PinChangeModal'
 import type { StockPurchaseCreate, UserBalance, MoneyMove, StockPurchase } from '@/api/types'
 
 const Treasurer: React.FC = () => {
@@ -16,7 +15,6 @@ const Treasurer: React.FC = () => {
   const { requestPin, pinModal } = usePerActionPin()
   
   const [showStockForm, setShowStockForm] = useState(false)
-  const [showPinChangeModal, setShowPinChangeModal] = useState(false)
 
   // Fetch all user balances
   const { data: balances = [] } = useQuery<UserBalance[]>({
@@ -192,18 +190,7 @@ const Treasurer: React.FC = () => {
         </div>
       </div>
 
-      {/* Settings Section */}
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4">{t('treasurer.settings')}</h3>
-        <div className="flex flex-wrap gap-4">
-          <button
-            onClick={() => setShowPinChangeModal(true)}
-            className="btn btn-outline"
-          >
-            🔐 {t('pin.change')}
-          </button>
-        </div>
-      </div>
+      {/* Settings Section (PIN change removed as obsolete) */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* User Balances */}
@@ -280,22 +267,28 @@ const Treasurer: React.FC = () => {
                     <p className="text-sm text-gray-600 mb-2">"{move.note}"</p>
                   )}
                   
-                  <div className="flex space-x-2">
-                    <button 
-                      onClick={() => handleConfirmMoneyMove(move.id)}
-                      disabled={confirmMoneyMoveMutation.isPending}
-                      className="btn btn-success btn-sm flex-1"
-                    >
-                      {confirmMoneyMoveMutation.isPending ? t('common.loading') : t('common.confirm')}
-                    </button>
-                    <button 
-                      onClick={() => handleRejectMoneyMove(move.id)}
-                      disabled={rejectMoneyMoveMutation.isPending}
-                      className="btn btn-danger btn-sm flex-1"
-                    >
-                      {rejectMoneyMoveMutation.isPending ? t('common.loading') : t('common.reject')}
-                    </button>
-                  </div>
+                  {currentUser?.role === 'admin' ? (
+                    <div className="text-xs text-gray-500 italic">
+                      {t('moneyMove.confirmationRequiresTreasurer', 'Confirmation requires a treasurer')}
+                    </div>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => handleConfirmMoneyMove(move.id)}
+                        disabled={confirmMoneyMoveMutation.isPending}
+                        className="btn btn-success btn-sm flex-1"
+                      >
+                        {confirmMoneyMoveMutation.isPending ? t('common.loading') : t('common.confirm')}
+                      </button>
+                      <button 
+                        onClick={() => handleRejectMoneyMove(move.id)}
+                        disabled={rejectMoneyMoveMutation.isPending}
+                        className="btn btn-danger btn-sm flex-1"
+                      >
+                        {rejectMoneyMoveMutation.isPending ? t('common.loading') : t('common.reject')}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -401,17 +394,6 @@ const Treasurer: React.FC = () => {
         />
       )}
       
-      {/* PIN Change Modal */}
-      {showPinChangeModal && (
-        <PinChangeModal
-          isOpen={showPinChangeModal}
-          onClose={() => setShowPinChangeModal(false)}
-          onSuccess={() => {
-            // Show success message or refresh data if needed
-            console.log('PIN changed successfully')
-          }}
-        />
-      )}
       {pinModal}
     </div>
   )

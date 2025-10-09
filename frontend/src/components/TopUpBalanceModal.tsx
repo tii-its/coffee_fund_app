@@ -6,9 +6,10 @@ import type { User, MoneyMoveCreate } from '@/api/types'
 interface TopUpBalanceModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: MoneyMoveCreate) => void | Promise<void>
+  onSubmit: (data: MoneyMoveCreate, pin: string) => void | Promise<void>
   user: User | null
   isLoading?: boolean
+  requirePin?: boolean // if true, user must re-enter PIN for this action
 }
 
 const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
@@ -17,10 +18,12 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
   onSubmit,
   user,
   isLoading = false,
+  requirePin = true,
 }) => {
   const { t } = useTranslation()
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
+  const [pin, setPin] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,17 +42,23 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
     
     const amountCents = Math.round(amountValue * 100)
     
+    if (requirePin && !pin.trim()) {
+      setError(t('pin.required'))
+      return
+    }
+
     try {
       await onSubmit({
         type: 'deposit',
         user_id: user.id,
         amount_cents: amountCents,
         note: note.trim() || null,
-      })
+      }, pin.trim())
       
       // Reset form
       setAmount('')
       setNote('')
+      setPin('')
       setError('')
     } catch (err) {
       setError(t('moneyMove.creationFailed'))
@@ -59,6 +68,7 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
   const handleClose = () => {
     setAmount('')
     setNote('')
+    setPin('')
     setError('')
     onClose()
   }
@@ -102,6 +112,7 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
               step="0.01"
               min="0.01"
               disabled={isLoading}
+            data-testid="topup-amount"
             />
             {amount && (
               <p className="text-sm text-gray-500 mt-1">
@@ -109,6 +120,23 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
               </p>
             )}
           </div>
+
+          {requirePin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('pin.enterPin')}
+              </label>
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => { setPin(e.target.value); setError('') }}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t('pin.placeholder')}
+                disabled={isLoading}
+             data-testid="topup-pin"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -122,6 +150,7 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
               rows={3}
               maxLength={500}
               disabled={isLoading}
+            data-testid="topup-note"
             />
             <p className="text-xs text-gray-500 mt-1">
               {note.length}/500 {t('common.characters')}
@@ -151,8 +180,9 @@ const TopUpBalanceModal: React.FC<TopUpBalanceModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || !amount || !user}
+              disabled={isLoading || !amount || !user || (requirePin && !pin.trim())}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+            data-testid="topup-submit"
             >
               {isLoading ? (
                 <span className="flex items-center">

@@ -64,23 +64,56 @@ const Dashboard: React.FC = () => {
     queryFn: () => usersApi.getAboveThreshold(1000).then((res: { data: any[] }) => res.data),
   })
 
-  // Create money move mutation
-  const createMoneyMoveMutation = useMutation({
-    mutationFn: (data: MoneyMoveCreate) =>
-      moneyMovesApi.create(data, currentUser?.id || ''),
+  // Mutation for treasurer-created moves
+  const treasurerCreateMutation = useMutation({
+    mutationFn: ({ data, pin }: { data: MoneyMoveCreate; pin: string }) =>
+      moneyMovesApi.create(data, { actorId: currentUser?.id || '', pin }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
       queryClient.invalidateQueries({ queryKey: ['userBalance'] })
       setIsTopUpModalOpen(false)
+      notify({ type: 'success', text: t('moneyMove.requestCreated') })
     },
+    onError: (err: any) => {
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        notify({ type: 'error', text: t('pin.invalid', 'Invalid PIN') })
+      } else {
+        notify({ type: 'error', text: t('moneyMove.creationFailed') })
+      }
+    }
   })
 
-  const handleTopUpBalance = async (data: MoneyMoveCreate) => {
-    try {
-      await createMoneyMoveMutation.mutateAsync(data)
-    } catch (error) {
-      console.error('Failed to create money move:', error)
-      throw error
+  // Mutation for self-service user-request moves
+  const userRequestMutation = useMutation({
+    mutationFn: ({ data, pin }: { data: MoneyMoveCreate; pin: string }) =>
+      moneyMovesApi.createUserRequest(data, { actorId: currentUser?.id || '', pin }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingMoves'] })
+      queryClient.invalidateQueries({ queryKey: ['userBalance'] })
+      setIsTopUpModalOpen(false)
+      notify({ type: 'success', text: t('moneyMove.requestCreated') })
+    },
+    onError: (err: any) => {
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        notify({ type: 'error', text: t('pin.invalid', 'Invalid PIN') })
+      } else {
+        notify({ type: 'error', text: t('moneyMove.creationFailed') })
+      }
+    }
+  })
+
+  const handleTopUpBalance = async (data: MoneyMoveCreate, pin: string) => {
+    if (!currentUser) return
+    const isSelf = selectedUser && currentUser.id === selectedUser.id
+    if (isSelf) {
+      await userRequestMutation.mutateAsync({ data, pin })
+    } else if (currentUser.role === 'treasurer') {
+      await treasurerCreateMutation.mutateAsync({ data, pin })
+    } else {
+      notify({ type: 'error', text: t('moneyMove.notAllowed') })
+      throw new Error('Not allowed')
     }
   }
   const { data: allBalances = [] } = useQuery({
@@ -333,14 +366,12 @@ const Dashboard: React.FC = () => {
             <BalanceCard balance={userBalance} />
           </div>
           <div className="flex gap-2">
-            {currentUser?.role === 'treasurer' && (
-              <button
-                onClick={() => setIsTopUpModalOpen(true)}
-                className="btn btn-success px-4 py-2"
-              >
-                {t('moneyMove.topUpBalance')}
-              </button>
-            )}
+            <button
+              onClick={() => setIsTopUpModalOpen(true)}
+              className="btn btn-success px-4 py-2"
+            >
+              {t('moneyMove.topUpBalance')}
+            </button>
             {/* PIN Management - show if user is viewing their own profile */}
             {selectedUser && currentUser && currentUser.id === selectedUser.id ? (
               <>
@@ -428,7 +459,8 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsTopUpModalOpen(false)}
         onSubmit={handleTopUpBalance}
         user={selectedUser}
-        isLoading={createMoneyMoveMutation.isPending}
+        isLoading={treasurerCreateMutation.isPending || userRequestMutation.isPending}
+        requirePin={true}
       />
 
       {/* PIN Change Modal */}

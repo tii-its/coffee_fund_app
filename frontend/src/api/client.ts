@@ -180,6 +180,12 @@ export const moneyMovesApi = {
   
   reject: (id: string, actor: ActorHeaders) =>
     api.patch<MoneyMove>(`/money-moves/${id}/reject`, null, withActor({}, actor)),
+  
+  createUserRequest: (moneyMove: MoneyMoveCreate, actor: ActorHeaders) =>
+    api.post<MoneyMove>('/money-moves/user-request', moneyMove, withActor({}, actor)),
+  
+  reject: (id: string, actor: ActorHeaders) =>
+    api.patch<MoneyMove>(`/money-moves/${id}/reject`, null, withActor({}, actor)),
 }
 
 // Audit API

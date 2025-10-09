@@ -2,13 +2,15 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatDate } from '@/lib/utils'
-import { usersApi } from '@/api/client'
+import { usersApi, moneyMovesApi } from '@/api/client'
 import { usePerActionPin } from '@/hooks/usePerActionPin'
-import type { User, UserUpdate, UserCreate } from '@/api/types'
+import type { User, UserUpdate, UserCreate, MoneyMoveCreate } from '@/api/types'
 import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
 import UserCreateModal from '@/components/UserCreateModal'
 import UserDeleteConfirmationModal from '@/components/UserDeleteConfirmationModal'
+import { useToast } from '@/components/Toast'
+import { useAppStore } from '@/store'
 // usersApi already imported above
 
 const Users: React.FC = () => {
@@ -23,6 +25,9 @@ const Users: React.FC = () => {
     hasRelatedRecords: boolean
     relatedRecords?: any
   } | null>(null)
+  
+  const { currentUser } = useAppStore()
+  const { notify } = useToast()
 
   // Admin gating removed: treasurer role should gate access (handled by route protection outside this component)
   
@@ -31,6 +36,9 @@ const Users: React.FC = () => {
     requiredRole: 'admin',
     title: 'Admin PIN Required for User Creation'
   })
+
+  // User PIN for money move requests
+  // Removed self top-up from Users page (obsolete)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -106,6 +114,8 @@ const Users: React.FC = () => {
     },
   })
 
+  // Removed money move creation mutation (handled in Dashboard)
+
   const handleCreate = () => {
     setCreateModalOpen(true)
   }
@@ -119,6 +129,7 @@ const Users: React.FC = () => {
     setSelectedUser(user)
     setDeleteModalOpen(true)
   }
+
 
   const handleDeleteConfirm = () => {
     if (!selectedUser) return
@@ -138,6 +149,8 @@ const Users: React.FC = () => {
     if (!selectedUser) return
     updateUserMutation.mutate({ userId: selectedUser.id, userUpdate })
   }
+
+  // Top up submit removed
 
   // delete submit removed (inline confirm approach)
 
@@ -232,6 +245,7 @@ const Users: React.FC = () => {
                       >
                         {t('common.delete')}
                       </button>
+                      {/* Top up button removed (obsolete) */}
                     </div>
                   </td>
                 </tr>
@@ -273,7 +287,10 @@ const Users: React.FC = () => {
         relatedRecords={deleteConfirmation?.relatedRecords}
       />
 
+      {/* TopUpBalanceModal removed */}
+
       {adminPinModal}
+  {/* userPinModal removed */}
   </div>
   )
 }
