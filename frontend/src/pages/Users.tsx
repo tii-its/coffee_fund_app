@@ -9,7 +9,6 @@ import type { AxiosResponse } from 'axios'
 import UserEditModal from '@/components/UserEditModal'
 import UserCreateModal from '@/components/UserCreateModal'
 import UserDeleteConfirmationModal from '@/components/UserDeleteConfirmationModal'
-import TopUpBalanceModal from '@/components/TopUpBalanceModal'
 import { useToast } from '@/components/Toast'
 import { useAppStore } from '@/store'
 // usersApi already imported above
@@ -21,7 +20,6 @@ const Users: React.FC = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [topUpModalOpen, setTopUpModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     hasRelatedRecords: boolean
@@ -40,10 +38,7 @@ const Users: React.FC = () => {
   })
 
   // User PIN for money move requests
-  const { requestPin: requestUserPin, pinModal: userPinModal } = usePerActionPin({ 
-    requiredRole: 'user',
-    title: 'PIN Required for Money Move Request'
-  })
+  // Removed self top-up from Users page (obsolete)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -119,22 +114,7 @@ const Users: React.FC = () => {
     },
   })
 
-  const createMoneyMoveMutation = useMutation({
-    mutationFn: async (moneyMove: MoneyMoveCreate) => {
-      const { actorId, pin } = await requestUserPin()
-      if (!actorId || !pin) throw new Error('User PIN required')
-      return moneyMovesApi.createUserRequest(moneyMove, { actorId, pin })
-    },
-    onSuccess: () => {
-      setTopUpModalOpen(false)
-      setSelectedUser(null)
-      notify({ type: 'success', text: t('moneyMove.requestCreated') })
-    },
-    onError: (error: any) => {
-      console.error('Failed to create money move request:', error)
-      notify({ type: 'error', text: t('moneyMove.creationFailed') })
-    },
-  })
+  // Removed money move creation mutation (handled in Dashboard)
 
   const handleCreate = () => {
     setCreateModalOpen(true)
@@ -150,10 +130,6 @@ const Users: React.FC = () => {
     setDeleteModalOpen(true)
   }
 
-  const handleTopUpBalance = (user: User) => {
-    setSelectedUser(user)
-    setTopUpModalOpen(true)
-  }
 
   const handleDeleteConfirm = () => {
     if (!selectedUser) return
@@ -174,9 +150,7 @@ const Users: React.FC = () => {
     updateUserMutation.mutate({ userId: selectedUser.id, userUpdate })
   }
 
-  const handleTopUpSubmit = async (moneyMove: MoneyMoveCreate) => {
-    createMoneyMoveMutation.mutate(moneyMove)
-  }
+  // Top up submit removed
 
   // delete submit removed (inline confirm approach)
 
@@ -271,14 +245,7 @@ const Users: React.FC = () => {
                       >
                         {t('common.delete')}
                       </button>
-                      {currentUser && currentUser.id === user.id && (
-                        <button 
-                          onClick={() => handleTopUpBalance(user)}
-                          className="btn btn-outline btn-sm text-green-600 hover:bg-green-50"
-                        >
-                          {t('moneyMove.topUpBalance')}
-                        </button>
-                      )}
+                      {/* Top up button removed (obsolete) */}
                     </div>
                   </td>
                 </tr>
@@ -320,19 +287,10 @@ const Users: React.FC = () => {
         relatedRecords={deleteConfirmation?.relatedRecords}
       />
 
-      <TopUpBalanceModal
-        isOpen={topUpModalOpen}
-        onClose={() => {
-          setTopUpModalOpen(false)
-          setSelectedUser(null)
-        }}
-        onSubmit={handleTopUpSubmit}
-        user={selectedUser}
-        isLoading={createMoneyMoveMutation.isPending}
-      />
+      {/* TopUpBalanceModal removed */}
 
       {adminPinModal}
-      {userPinModal}
+  {/* userPinModal removed */}
   </div>
   )
 }

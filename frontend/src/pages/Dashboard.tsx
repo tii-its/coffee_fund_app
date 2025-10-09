@@ -74,7 +74,14 @@ const Dashboard: React.FC = () => {
       setIsTopUpModalOpen(false)
       notify({ type: 'success', text: t('moneyMove.requestCreated') })
     },
-    onError: () => notify({ type: 'error', text: t('moneyMove.creationFailed') })
+    onError: (err: any) => {
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        notify({ type: 'error', text: t('pin.invalid', 'Invalid PIN') })
+      } else {
+        notify({ type: 'error', text: t('moneyMove.creationFailed') })
+      }
+    }
   })
 
   // Mutation for self-service user-request moves
@@ -87,7 +94,14 @@ const Dashboard: React.FC = () => {
       setIsTopUpModalOpen(false)
       notify({ type: 'success', text: t('moneyMove.requestCreated') })
     },
-    onError: () => notify({ type: 'error', text: t('moneyMove.creationFailed') })
+    onError: (err: any) => {
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        notify({ type: 'error', text: t('pin.invalid', 'Invalid PIN') })
+      } else {
+        notify({ type: 'error', text: t('moneyMove.creationFailed') })
+      }
+    }
   })
 
   const handleTopUpBalance = async (data: MoneyMoveCreate, pin: string) => {

@@ -21,8 +21,9 @@ def treasurer_actor(
     user = db.query(User).filter(User.id == actor_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Actor not found")
+    # Only pure treasurers are allowed for confirmation actions – admins cannot act as confirmer
     if user.role != UserRole.TREASURER:
-        raise HTTPException(status_code=403, detail="Only treasurers allowed")
+        raise HTTPException(status_code=403, detail="Only treasurers allowed (admin not permitted for confirmation)")
     if not PinService.verify_user_pin(user.id, actor_pin, db):
         raise HTTPException(status_code=403, detail="Invalid treasurer PIN")
     return user
