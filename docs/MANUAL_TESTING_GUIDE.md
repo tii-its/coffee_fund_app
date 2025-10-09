@@ -1,37 +1,37 @@
-# Manual Testing Guide: User-Initiated Money Moves
+# Manual Testing Guide: User-Initiated Money Moves (Dashboard PIN Flow)
 
 ## Prerequisites
 1. Development environment running (`make dev`)
 2. Database migrated (`make migrate`) 
 3. At least one admin, one treasurer, and one regular user created
+4. Application philosophy: No persistent login session – per-user access is gated by on-demand PIN verification on the Dashboard. Users re‑enter PIN for sensitive actions (top-up).
 
 ## Test Scenarios
 
-### Scenario 1: Basic User Money Move Creation
+### Scenario 1: Basic User Money Move Creation (Dashboard)
 
-**Objective**: Verify users can create money moves for themselves
+**Objective**: Verify a user can self‑initiate a deposit request from the Dashboard using only PIN confirmation (no login session).
 
 **Steps**:
-1. Navigate to the Users page (`/users`)
-2. Log in with a regular user account
-3. Locate your user row in the table
-4. Verify you see "Top Up Balance" button only on your row (not others)
-5. Click "Top Up Balance" button
-6. Fill in the modal:
-   - Amount: €10.00
-   - Note: "Test user-initiated deposit"
-7. Submit the form
-8. Verify PIN prompt appears
-9. Enter correct PIN
-10. Verify success message appears
-11. Verify modal closes
+1. Go to Dashboard
+2. Select the user in the user picker (do not log in – just select)
+3. Inline PIN panel appears; enter correct PIN and confirm access
+4. Balance + actions area appears for that user
+5. Click "Top Up Balance"
+6. In modal enter:
+  - Amount: €10.00
+  - Note: `Test self deposit`
+  - Re-enter PIN (modal requires a fresh PIN entry)
+7. Submit
+8. Observe success toast
+9. Modal closes; pending move appears under "Pending Confirmations" (status pending)
 
 **Expected Results**:
-- ✅ Button only visible on current user's row
-- ✅ Modal opens correctly  
-- ✅ PIN verification required
-- ✅ Success notification shown
-- ✅ Money move created with "pending" status
+- ✅ Inline PIN gating required before any user-sensitive data appears
+- ✅ Top Up button visible after successful PIN verification
+- ✅ Modal enforces second PIN entry (re-auth for action)
+- ✅ Request created with status "pending"
+- ✅ Balance not yet updated until confirmation
 
 ### Scenario 2: Treasurer Confirmation of User Request
 
@@ -94,21 +94,16 @@
 - ✅ First request returns 403 "Users can only create money moves for themselves"
 - ✅ Second request returns 403 "Invalid user PIN"
 
-### Scenario 4: UI Behavior Verification
+### Scenario 4: UI Behavior Verification (Users Page vs Dashboard)
 
 **Objective**: Verify UI behaves correctly across different user contexts
 
 **Steps**:
-1. Log in as User A
-2. Navigate to Users page
-3. Verify "Top Up Balance" button only on User A's row
-4. Log out and log in as User B  
-5. Navigate to Users page
-6. Verify "Top Up Balance" button only on User B's row (not User A's)
-7. Log in as treasurer
-8. Navigate to Users page
-9. Verify admin/edit buttons work normally
-10. Verify treasurer can see all users but no "Top Up Balance" buttons
+1. Navigate to Dashboard, select User A, verify PIN and observe Top Up button
+2. Return (deselect), select User B, verify PIN, observe same flow (button only after each user’s PIN)
+3. Navigate to Users page – ensure per-row top-up (if retained) still enforces PIN before mutation (or is removed if design migrated fully to Dashboard)
+4. As treasurer on Dashboard selecting another user: Top Up still available (treasurer path) but requires treasurer PIN in modal if acting on behalf (design dependent – verify implementation)
+5. Ensure no residual session persists when switching users – each user selection demands its own PIN
 
 **Expected Results**:
 - ✅ Button visibility changes based on current user
@@ -121,8 +116,8 @@
 **Objective**: Verify error scenarios are handled gracefully
 
 **Steps**:
-1. Create money move request as user
-2. Disconnect network during submission
+1. Create money move request via Dashboard self flow
+2. Disconnect network during modal submission
 3. Verify error message displayed
 4. Retry with network restored
 5. Try submitting with invalid amount (negative, zero, non-numeric)
@@ -232,9 +227,9 @@ For production readiness:
 
 ### Common Issues:
 
-1. **"Top Up Balance" button not visible**: Check if user is logged in and viewing their own row
-2. **PIN verification fails**: Verify PIN is correct and user is active
-3. **403 errors**: Check user is trying to create move for themselves only
+1. **"Top Up Balance" button not visible**: Ensure user PIN has been verified (inline panel must disappear)
+2. **PIN verification fails**: Verify correct PIN; user must be active
+3. **403 errors**: For self-service ensure user_id matches actor header; for treasurer path ensure role is treasurer
 4. **Modal doesn't open**: Check for JavaScript console errors
 5. **Treasurer can't confirm**: Verify treasurer has correct role and PIN
 
