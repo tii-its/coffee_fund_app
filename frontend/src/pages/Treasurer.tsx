@@ -394,17 +394,6 @@ const Treasurer: React.FC = () => {
         />
       )}
       
-      {/* PIN Change Modal */}
-      {showPinChangeModal && (
-        <PinChangeModal
-          isOpen={showPinChangeModal}
-          onClose={() => setShowPinChangeModal(false)}
-          onSuccess={() => {
-            // Show success message or refresh data if needed
-            console.log('PIN changed successfully')
-          }}
-        />
-      )}
       {pinModal}
     </div>
   )
