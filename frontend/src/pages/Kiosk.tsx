@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi, productsApi, consumptionsApi } from '@/api/client'
-// Replacing promptForActor with modal approach
-import { usePerActionPin } from '@/hooks/usePerActionPin'
 import { formatCurrency } from '@/lib/utils'
 import UserPicker from '@/components/UserPicker'
 import ProductGrid from '@/components/ProductGrid'
@@ -14,9 +12,14 @@ const Kiosk: React.FC = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { selectedUser, setSelectedUser } = useAppStore()
+  const [pendingUser, setPendingUser] = useState<User | null>(null)
+  const [pinInput, setPinInput] = useState('')
+  const [verifiedPin, setVerifiedPin] = useState<string | null>(null)
+  const [pinError, setPinError] = useState('')
+  const [verifying, setVerifying] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState(1)
-  const [step, setStep] = useState<'user' | 'product' | 'confirm' | 'complete'>('user')
+  const [step, setStep] = useState<'user' | 'pin' | 'product' | 'confirm' | 'complete'>('user')
 
   // Fetch users and products
   const { data: users = [] } = useQuery({
@@ -36,15 +39,13 @@ const Kiosk: React.FC = () => {
     enabled: !!selectedUser,
   })
 
-  // Create consumption mutation
-  const { requestPin, pinModal } = usePerActionPin()
+  // Create consumption mutation using cached verified PIN (no second prompt)
   const createConsumption = useMutation({
     mutationFn: async (data: { user_id: string; product_id: string; qty: number }) => {
-      const { actorId, pin } = await requestPin()
-      if (!actorId || !pin) throw new Error('PIN required')
+      if (!verifiedPin) throw new Error('PIN missing')
       return consumptionsApi.create(
         { user_id: data.user_id, product_id: data.product_id, qty: data.qty },
-        { actorId, pin }
+        { actorId: data.user_id, pin: verifiedPin }
       )
     },
     onSuccess: () => {
@@ -58,8 +59,10 @@ const Kiosk: React.FC = () => {
   })
 
   const handleUserSelect = (user: User) => {
-    setSelectedUser(user)
-    setStep('product')
+    setPendingUser(user)
+    setPinInput('')
+    setPinError('')
+    setStep('pin')
   }
 
   const handleProductSelect = (product: Product) => {
@@ -69,7 +72,6 @@ const Kiosk: React.FC = () => {
 
   const handleConfirmPurchase = () => {
     if (selectedUser && selectedProduct) {
-      // For kiosk mode, we'll use the first treasurer as creator (in real app, might be a kiosk user)
       createConsumption.mutate({
         user_id: selectedUser.id,
         product_id: selectedProduct.id,
@@ -80,8 +82,12 @@ const Kiosk: React.FC = () => {
 
   const handleReset = () => {
     setSelectedUser(null)
+    setPendingUser(null)
     setSelectedProduct(null)
     setQuantity(1)
+    setPinInput('')
+    setPinError('')
+    setVerifiedPin(null)
     setStep('user')
   }
 
@@ -127,7 +133,66 @@ const Kiosk: React.FC = () => {
         </div>
       )}
 
-      {step === 'product' && selectedUser && (
+      {step === 'pin' && pendingUser && (
+        <div className="max-w-sm mx-auto bg-white border border-blue-200 rounded-lg p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-2 text-blue-700">{t('pin.confirmAccessTitle', { name: pendingUser.display_name })}</h3>
+          <p className="text-sm text-gray-600 mb-4">{t('pin.confirmAccessMessage')}</p>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!pinInput.trim()) {
+                setPinError(t('pin.required'))
+                return
+              }
+              setVerifying(true)
+              setPinError('')
+              try {
+                await usersApi.verifyPin(pendingUser.id, pinInput)
+                setSelectedUser(pendingUser)
+                setPendingUser(null)
+                setVerifiedPin(pinInput)
+                setPinInput('')
+                setStep('product')
+              } catch (err: any) {
+                const detail = err?.response?.data?.detail
+                setPinError(typeof detail === 'string' ? detail : t('pin.invalid'))
+              } finally {
+                setVerifying(false)
+              }
+            }}
+          >
+            <input
+              type="password"
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t('pin.placeholder')}
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              disabled={verifying}
+              autoFocus
+            />
+            {pinError && <div className="text-xs text-red-600 mb-2">{pinError}</div>}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setPendingUser(null); setPinInput(''); setPinError(''); setStep('user') }}
+                className="px-3 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                disabled={verifying}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={!pinInput.trim() || verifying}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {verifying ? t('common.loading') : t('pin.confirmAccess')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+  {step === 'product' && selectedUser && (
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">{t('kiosk.selectProduct')}</h2>
@@ -145,7 +210,7 @@ const Kiosk: React.FC = () => {
         </div>
       )}
 
-      {step === 'confirm' && selectedUser && selectedProduct && (
+  {step === 'confirm' && selectedUser && selectedProduct && (
         <div className="max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-center mb-6">{t('kiosk.confirmPurchase')}</h2>
           
@@ -244,7 +309,7 @@ const Kiosk: React.FC = () => {
           <p className="text-gray-600">{t('common.loading')}...</p>
         </div>
       )}
-      {pinModal}
+  {/* PIN already verified; no per-action modal */}
     </div>
   )
 }
