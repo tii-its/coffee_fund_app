@@ -1,8 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter } from 'react-router-dom'
+import { TestProviders } from '@/tests/TestProviders'
 import Users from '@/pages/Users'
 import { makeUser } from '@/tests/factories'
 
@@ -26,7 +25,7 @@ vi.mock('@/hooks/usePerActionPin', () => ({
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (k: string, opts?: any) => {
+    t: (k: string) => {
       const map: Record<string,string> = {
         'navigation.users': 'Users',
         'user.createUser': 'Create User',
@@ -51,21 +50,14 @@ vi.mock('react-i18next', () => ({
       }
       return map[k] || k
     }
-  })
+  }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  I18nextProvider: ({ children }: any) => <>{children}</>,
 }))
 
 import { usersApi } from '@/api/client'
 
-const wrapper = (ui: React.ReactNode) => {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  return (
-    <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        {ui}
-      </BrowserRouter>
-    </QueryClientProvider>
-  )
-}
+const wrapper = (ui: React.ReactNode) => <TestProviders>{ui}</TestProviders>
 
 describe('User deletion with related records 409 flow', () => {
   const targetUser = makeUser({ id: 'u1', display_name: 'Has History', role: 'user' })

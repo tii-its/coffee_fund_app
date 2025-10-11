@@ -1,14 +1,14 @@
 /**
  * Test user deletion functionality with admin PIN confirmation.
  */
+import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter } from 'react-router-dom'
 import Users from '../pages/Users'
 import { usersApi } from '../api/client'
 import { makeUser } from '@/tests/factories'
 import { usePerActionPin } from '../hooks/usePerActionPin'
+import { TestProviders } from '@/tests/TestProviders'
 
 // Mock the API client
 vi.mock('../api/client', () => ({
@@ -23,7 +23,7 @@ vi.mock('../hooks/usePerActionPin', () => ({
   usePerActionPin: vi.fn(),
 }))
 
-// Mock react-i18next
+// Mock react-i18next (include initReactI18next to satisfy i18n setup)
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: any) => {
@@ -51,6 +51,8 @@ vi.mock('react-i18next', () => ({
       return typeof translation === 'function' ? translation(params) : translation || key
     },
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  I18nextProvider: ({ children }: any) => <>{children}</>,
 }))
 
 // Mock components that aren't relevant for this test
@@ -67,22 +69,7 @@ vi.mock('../lib/utils', () => ({
 }))
 
 // Test wrapper component
-const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        {children}
-      </BrowserRouter>
-    </QueryClientProvider>
-  )
-}
+const TestWrapper = ({ children }: { children: React.ReactNode }) => <TestProviders>{children}</TestProviders>
 
 describe('Users Page - Deletion Functionality', () => {
   const mockUsers = [
